@@ -1,4 +1,5 @@
 #define INPUT_SIZE 6
+#define OUTPUT_SIZE 2
 
 #define STDIN_FD  0
 #define STDOUT_FD 1
@@ -85,7 +86,7 @@ int operacao(char operador, int n1, int n2){
 int main () {
     int n1, n2, resultado;
     char operador;
-    char input[INPUT_SIZE], output[2];
+    char input[INPUT_SIZE], output[OUTPUT_SIZE];
 
     read(STDIN_FD, (void *) input, INPUT_SIZE);
     n1 = input[0] - '0';
@@ -94,9 +95,8 @@ int main () {
     resultado = operacao(operador, n1, n2);
     output[0] = resultado + '0';
     output[1] = '\n';
-    write(STDOUT_FD, (void *) output, 2);
+    write(STDOUT_FD, (void *) output, OUTPUT_SIZE);
 
-    
     return 0;
 }
 
