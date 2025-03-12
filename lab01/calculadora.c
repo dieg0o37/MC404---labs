@@ -1,4 +1,7 @@
-#include "funcoes-risc-v.h"
+#define INPUT_SIZE 6
+
+#define STDIN_FD  0
+#define STDOUT_FD 1
 
 /* read
  * Parâmetros:
@@ -54,4 +57,50 @@ void exit(int code){
     :"r"(code)    // Input list
     : "a0", "a7"
   );
+}
+
+int operacao(char operador, int n1, int n2){
+    switch (operador)
+    {
+    case '+':
+        return (n1 + n2);
+        break;
+    case '-':
+        return (n1 - n2);
+        break;
+    case '*':
+        return (n1 * n2);
+        break;
+    default:
+        break;
+    }
+    return 0;
+}
+
+// n1, n2 estão entre 0 e 9
+// operador é um dos caracteres '+', '-', '*'
+// input = "n1 op n2\n"
+// output = "resultado\n"
+// resultado é um número entre 0 e 9 (1 dígito)
+int main () {
+    int n1, n2, resultado;
+    char operador;
+    char input[INPUT_SIZE], output[2];
+
+    read(STDIN_FD, (void *) input, INPUT_SIZE);
+    n1 = input[0] - '0';
+    operador = input[2];
+    n2 = input[4] - '0';
+    resultado = operacao(operador, n1, n2);
+    output[0] = resultado + '0';
+    output[1] = '\n';
+    write(STDOUT_FD, (void *) output, 2);
+
+    
+    return 0;
+}
+
+void _start() {
+  int ret_val = main();
+  exit(ret_val);
 }
