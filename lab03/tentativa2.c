@@ -2,7 +2,6 @@
 #define STDOUT_FD 1
 #define INPUT_SIZE 33
 
-
 int read(int __fd, const void *__buf, int __n) {
     int ret_val;
     __asm__ __volatile__(
@@ -103,6 +102,8 @@ void dec_to_hex(char *num, char *num_hex) {
     }
 }
 
+
+
 void dec_to_oct(char *num, char *num_oct) {
     int decimal_num = 0;
     int i;
@@ -152,45 +153,50 @@ void add_one(char *num){
     }
 }
 
+void invert_bits(char *num) {
+    int i;
+    for (i = 0; i < INPUT_SIZE - 1; i++) num[i] = num[i] == '0' ? '1' : '0';
+    add_one(num);
+}
+
+void bin_to_oct (char *num, char *num_oct) {
+    char num_dec[INPUT_SIZE];
+    bin_to_dec(num, num_dec);
+    dec_to_oct(num_dec, num_oct);
+}
+
+void bin_to_hex (char *num, char *num_hex) {
+    char num_dec[INPUT_SIZE];
+    bin_to_dec(num, num_dec);
+    dec_to_hex(num_dec, num_hex);
+}
+
 void write_number(char *num, char *prefix, int base, int complemento_dois) {
     char output_buffer[INPUT_SIZE];
-    int eh_negativo = 0;
     int i;
     for (i = 0; i < INPUT_SIZE; i++) {
         output_buffer[i] = num[i];
     }
-    if (complemento_dois) {
-        if (output_buffer[0] == 1){
-            i = 0;
-            while (output_buffer[i] != '\n') {
-                output_buffer[i] = output_buffer[i] == '0' ? '1' : '0';
-                i++;
-            }
-            add_one(output_buffer);
-            eh_negativo = 1;
-        } 
+    if (complemento_dois && output_buffer[0] == '1' && base == 10) {
+        invert_bits(output_buffer);
+        write(STDOUT_FD, "-", 1);
     }
-    if (base == 16) {
-        char num_dec[INPUT_SIZE];
-        bin_to_dec(output_buffer, num_dec);
-        dec_to_hex(num_dec, output_buffer);
-    } else if (base == 8) {
-        char num_dec[INPUT_SIZE];
-        bin_to_dec(output_buffer, num_dec);
-        dec_to_oct(num_dec, output_buffer);
-    } else if (base == 10) {
-        char num_dec[INPUT_SIZE];
-        bin_to_dec(output_buffer, num_dec);
+    if (base != 2) {
+        char num_temp[INPUT_SIZE];
+        if (base == 16) {
+            bin_to_hex(output_buffer, num_temp); 
+        } else if (base == 8) {
+            bin_to_oct(output_buffer, num_temp);
+        } else if (base == 10) {
+            bin_to_dec(output_buffer, num_temp);
+        }
         i = 0;
-        while (num_dec[i] != '\n') {
-            output_buffer[i] = num_dec[i];
+        while (num_temp[i] != '\n') {
+            output_buffer[i] = num_temp[i];
             i++;
         }
         output_buffer[i] = '\n';
-    }
-    if (eh_negativo && base != 2) {
-        write(STDOUT_FD, "-", 1);
-    }
+    }    
     write(STDOUT_FD, (void *) prefix, 2);
     for (i = 0; output_buffer[i] != '\n'; i++) {
         write(STDOUT_FD, (void *) &output_buffer[i], 1);
