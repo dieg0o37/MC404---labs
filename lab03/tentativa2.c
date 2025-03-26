@@ -47,25 +47,18 @@ void bin_to_dec(char *num, char *num_dec) {
     int decimal_num = 0;
     int base = 1;
     int i;
-
-    // Convert binary to decimal
     for (i = INPUT_SIZE - 2; i >= 0; i--) {
         if (num[i] == '1') {
             decimal_num += base;
         }
         base = base * 2;
     }
-
-    // Convert decimal to string
     i = 0;
     while (decimal_num != 0) {
         num_dec[i++] = (decimal_num % 10) + '0';
         decimal_num = decimal_num / 10;
     }
-
     num_dec[i] = '\n';
-
-    // Reverse the string
     for (int j = 0; j < i / 2; j++) {
         char temp = num_dec[j];
         num_dec[j] = num_dec[i - j - 1];
@@ -73,71 +66,14 @@ void bin_to_dec(char *num, char *num_dec) {
     }
 }
 
-
-void dec_to_hex(char *num, char *num_hex) {
-    int decimal_num = 0;
-    int i;
-    for (i = 0; num[i] != '\n'; i++) {
-        decimal_num = decimal_num * 10 + (num[i] - '0');
-    }
-
-    i = 0;
-    while (decimal_num != 0) {
-        int remainder = decimal_num % 16;
-        if (remainder < 10) {
-            num_hex[i++] = '0' + remainder;
-        } else {
-            num_hex[i++] = 'a' - 10 + remainder;
-        }
-        decimal_num = decimal_num / 16;
-    }
-
-    num_hex[i] = '\n';
-
-    // invertendo
-    for (int j = 0; j < i / 2; j++) {
-        char temp = num_hex[j];
-        num_hex[j] = num_hex[i - j - 1];
-        num_hex[i - j - 1] = temp;
-    }
-}
-
-
-
-void dec_to_oct(char *num, char *num_oct) {
-    int decimal_num = 0;
-    int i;
-    for (i = 0; num[i] != '\n'; i++) {
-        decimal_num = decimal_num * 10 + (num[i] - '0');
-    }
-
-    i = 0;
-    while (decimal_num != 0) {
-        int remainder = decimal_num % 8;
-        num_oct[i++] = '0' + remainder;
-        decimal_num = decimal_num / 8;
-    }
-
-    num_oct[i] = '\n';
-
-    // invertendo
-    for (int j = 0; j < i / 2; j++) {
-        char temp = num_oct[j];
-        num_oct[j] = num_oct[i - j - 1];
-        num_oct[i - j - 1] = temp;
-    }
-}
-
 void swap_endian(char *num_bin, char *swapped_num) {
     int i;
-    for (i = 0; i < INPUT_SIZE; i++) {
-        swapped_num[i] = num_bin[i];
+    for (i = 0; i < 4; i++) {
+        for (int j = 0; j < 8; j++) {
+            swapped_num[i * 8 + j] = num_bin[(3 - i) * 8 + j];
+        }
     }
-    i = 8;
-    while (i > 0) {
-        swapped_num[8 - i] = swapped_num[INPUT_SIZE - 1 - i];
-        i--;
-    }
+    swapped_num[INPUT_SIZE - 1] = '\n';
 }
 
 void add_one(char *num){
@@ -160,15 +96,57 @@ void invert_bits(char *num) {
 }
 
 void bin_to_oct (char *num, char *num_oct) {
-    char num_dec[INPUT_SIZE];
-    bin_to_dec(num, num_dec);
-    dec_to_oct(num_dec, num_oct);
+    int octal_num = 0;
+    int base = 1;
+    int i;
+    int len = ((INPUT_SIZE - 2) / 3) + 1;
+
+    for (i = INPUT_SIZE - 2; i >= 0; i--) {
+        if (num[i] == '1') {
+            octal_num += base;
+        }
+        base = base * 2;
+        if ((INPUT_SIZE - 2 - i) % 3 == 2 || i == 0) {
+            num_oct[(INPUT_SIZE - 2 - i) / 3] = octal_num + '0';
+            octal_num = 0;
+            base = 1;
+        }
+    }
+    char temp;
+    for (i = 0; i < len / 2; i++) {
+        temp = num_oct[i];
+        num_oct[i] = num_oct[len - i - 1];
+        num_oct[len - i - 1] = temp;
+    }
+    num_oct[len] = '\n';
 }
 
 void bin_to_hex (char *num, char *num_hex) {
-    char num_dec[INPUT_SIZE];
-    bin_to_dec(num, num_dec);
-    dec_to_hex(num_dec, num_hex);
+    int i, j;
+    int hex_digit;
+    int len = 0;
+
+    for (i = INPUT_SIZE - 2; i >= 0; i -= 4) {
+        hex_digit = 0;
+        for (j = 0; j < 4; j++) {
+            if (i - j >= 0 && num[i - j] == '1') {
+                hex_digit += (1 << j);
+            }
+        }
+        if (hex_digit < 10) {
+            num_hex[len++] = hex_digit + '0';
+        } else {
+            num_hex[len++] = hex_digit - 10 + 'a';
+        }
+    }
+
+    char temp;
+    for (i = 0; i < len / 2; i++) {
+        temp = num_hex[i];
+        num_hex[i] = num_hex[len - i - 1];
+        num_hex[len - i - 1] = temp;
+    }
+    num_hex[len] = '\n';
 }
 
 void write_number(char *num, char *prefix, int base, int complemento_dois) {
