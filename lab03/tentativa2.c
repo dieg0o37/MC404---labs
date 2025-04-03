@@ -1,6 +1,4 @@
-#define STDIN_FD 0
-#define STDOUT_FD 1
-#define INPUT_SIZE 33
+
 
 int read(int __fd, const void *__buf, int __n) {
     int ret_val;
@@ -41,26 +39,33 @@ void exit(int code) {
         : "a0", "a7"
     );
 }
+#define STDIN_FD 0
+#define STDOUT_FD 1
+#define INPUT_SIZE 33
 
 
 void bin_to_dec(char *num, char *num_dec) {
-    int decimal_num = 0;
-    int base = 1;
+    unsigned long decimal_num = 0;
+    unsigned long base = 1;
     int i;
+    //transforma string binário em decimal
     for (i = INPUT_SIZE - 2; i >= 0; i--) {
         if (num[i] == '1') {
             decimal_num += base;
         }
         base = base * 2;
     }
+    //transforma decimal em string
     i = 0;
     while (decimal_num != 0) {
         num_dec[i++] = (decimal_num % 10) + '0';
         decimal_num = decimal_num / 10;
     }
     num_dec[i] = '\n';
+    //inverte a string
+    char temp;
     for (int j = 0; j < i / 2; j++) {
-        char temp = num_dec[j];
+        temp = num_dec[j];
         num_dec[j] = num_dec[i - j - 1];
         num_dec[i - j - 1] = temp;
     }
@@ -68,7 +73,9 @@ void bin_to_dec(char *num, char *num_dec) {
 
 void swap_endian(char *num_bin, char *swapped_num) {
     int i;
+    //cicla pelos 4 bytes do número
     for (i = 0; i < 4; i++) {
+        //cicla pelos 8 bits de cada byte
         for (int j = 0; j < 8; j++) {
             swapped_num[i * 8 + j] = num_bin[(3 - i) * 8 + j];
         }
@@ -76,6 +83,7 @@ void swap_endian(char *num_bin, char *swapped_num) {
     swapped_num[INPUT_SIZE - 1] = '\n';
 }
 
+//soma 1 ao número binário em string
 void add_one(char *num){
     int carry = 1;
     int i;
@@ -101,17 +109,20 @@ void bin_to_oct (char *num, char *num_oct) {
     int i;
     int len = ((INPUT_SIZE - 2) / 3) + 1;
 
+    //transforma string binário em octal
     for (i = INPUT_SIZE - 2; i >= 0; i--) {
         if (num[i] == '1') {
             octal_num += base;
         }
         base = base * 2;
+        //a cada 3 bits (1 dígito octal), adiciona o número octal ao output
         if ((INPUT_SIZE - 2 - i) % 3 == 2 || i == 0) {
             num_oct[(INPUT_SIZE - 2 - i) / 3] = octal_num + '0';
             octal_num = 0;
             base = 1;
         }
     }
+    //inverte a string
     char temp;
     for (i = 0; i < len / 2; i++) {
         temp = num_oct[i];
@@ -126,13 +137,19 @@ void bin_to_hex (char *num, char *num_hex) {
     int hex_digit;
     int len = 0;
 
+    //transforma string binário em hexadecimal
+    //opera a string de 4 em 4 bits (1 dígito hexadecimal)
     for (i = INPUT_SIZE - 2; i >= 0; i -= 4) {
         hex_digit = 0;
+        //cicla pelos 4 bits
         for (j = 0; j < 4; j++) {
+            //se o bit for 1, adiciona 2^j ao número hexadecimal
             if (i - j >= 0 && num[i - j] == '1') {
+                //hex_digit += pow(2, j);
                 hex_digit += (1 << j);
             }
         }
+        //adiciona o número hexadecimal ao output
         if (hex_digit < 10) {
             num_hex[len++] = hex_digit + '0';
         } else {
@@ -152,53 +169,57 @@ void bin_to_hex (char *num, char *num_hex) {
 void write_number(char *num, char *prefix, int base, int complemento_dois) {
     char output_buffer[INPUT_SIZE];
     int i;
+    //copia o número para o buffer de output
     for (i = 0; i < INPUT_SIZE; i++) {
         output_buffer[i] = num[i];
     }
+    //se for complemento de dois e base 10, inverte os bits e cria uma variavel pra guardar o número negativo
     if (complemento_dois && output_buffer[0] == '1' && base == 10) {
         invert_bits(output_buffer);
+        //coloca um sinal de menos na frente do buffer antes da impressão pro terminal
         write(STDOUT_FD, "-", 1);
     }
-    if (base != 2) {
-        char num_temp[INPUT_SIZE];
-        if (base == 16) {
-            bin_to_hex(output_buffer, num_temp); 
-        } else if (base == 8) {
-            bin_to_oct(output_buffer, num_temp);
-        } else if (base == 10) {
-            bin_to_dec(output_buffer, num_temp);
+    //converte o número para a base desejada
+    if (base == 16) {
+        bin_to_hex(num, output_buffer); 
+    } else if (base == 8) {
+        bin_to_oct(num, output_buffer);
+    } else if (base == 10) {
+        char num_dec[INPUT_SIZE];
+        bin_to_dec(output_buffer, num_dec);
+        for (i = 0; i < INPUT_SIZE; i++) {
+            output_buffer[i] = num_dec[i];
         }
-        i = 0;
-        while (num_temp[i] != '\n') {
-            output_buffer[i] = num_temp[i];
-            i++;
-        }
-        output_buffer[i] = '\n';
-    }    
+    }
+    //imprime o número no terminal
     write(STDOUT_FD, (void *) prefix, 2);
-    for (i = 0; output_buffer[i] != '\n'; i++) {
+    i = 0;
+    while (output_buffer[i] == '0' && output_buffer[i + 1] != '\n') i++;
+    for (i; output_buffer[i] != '\n'; i++) {
         write(STDOUT_FD, (void *) &output_buffer[i], 1);
     }
     write(STDOUT_FD, "\n", 1);
 }
 
 int main() {
-    char unsigned_val_bin[33], swapped_val_bin[33]; // num[32] = '\n'
-    read(STDIN_FD, unsigned_val_bin, 33);
+    char val_bin[33], swapped_val_bin[33]; // num[32] = '\n'
+    read(STDIN_FD, val_bin, 33);
     int i;
 
-    swap_endian(unsigned_val_bin, swapped_val_bin);
+    //troca o endianness do input
+    swap_endian(val_bin, swapped_val_bin);
+
     // 1. Decimal complemento de dois
-    write_number(unsigned_val_bin, "", 10, 1);
+    write_number(val_bin, "", 10, 1);
     
     // 2. Decimal não assinado com endianness trocado
     write_number(swapped_val_bin, "", 10, 0);    
     
     // 3. Hexadecimal complemento de dois
-    write_number(unsigned_val_bin, "0x", 16, 1);
+    write_number(val_bin, "0x", 16, 1);
     
     // 4. Octal complemento de dois
-    write_number(unsigned_val_bin, "0o", 8, 1);
+    write_number(val_bin, "0o", 8, 1);
     
     // 5. Binário com endianness trocado
     write_number(swapped_val_bin, "0b", 2, 0);
