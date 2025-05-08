@@ -40,239 +40,154 @@ main:
 
     j exit
 
-
-
-# a1 = adress of buffer
-# a2 = size of buffer
-read:
-    li a0, 0
-    li a7, 63
+read_input:
+    li a0, 0 // File descriptor 0 (stdin)
+    li a7, 63 // Syscall number for read
+    la a1, INPUT // Load buffer address
+    li a2, 32 // Read up to 32 bytes
     ecall
     ret
 
 
 
-read_input:
-    addi sp, sp, -4
-    sw ra, 0(sp)
-
-    la a1, LINHA1
-    li a2, 6
-    jal read
-
-    la a1, LINHA2
-    li a2, 6
-    jal read
-
-    la a1, LINHA3
-    li a2, 6
-    jal read
-
-    la a1, LINHA4
-    li a2, 8
-    jal read
-
-    lw ra, 0(sp)
-    addi sp, sp, 4
-    ret
-
-parse_input:
-    addi sp, sp, -4
-    sw ra, 0(sp)
-
-    la a0, LINHA1
-    la a1, N1
-    la a2, S1
-    jal parse_exponents
-
-    la a0, LINHA2
-    la a1, N1
-    la a2, S2
-    jal parse_exponents
-
-    la a0, LINHA3
-    la a1, N3
-    la a2, S2
-    jal parse_exponents
-
-    la a0, LINHA4
-    la a1, START
-    la a2, END
-    jal parse_limits
-
-    lw ra, 0(sp)
-    addi sp, sp, 4
-    ret
-
-
 # a0 = LINHA
 # a1 = Numero
 # a2 = Sinal
-parse_exponents:
-    lb t0, 0(a0)
-    sb t0, 0(a2)
-    addi a0, a0, 2
-
-
-    li t0, 0x0A
-    li t5, 10
+parse_input:
+    la a0, INPUT
+    la a1, INPUT_ARRAY
+    li t1, 5 //Para após encontrar os 5 números
+    li t6, 0 // Contador de números encontrados
+    addi a0, a0, -1
     li s0, 0
-    loop_exp:
-        lb t1, 0(a0) # loads current digit
-        addi t4, t1, -48  # transform to int
-        lb t2, 1(a0) # loads next digit
-        beq t2, t0, break # if next digit is \n
-        mul t4, t4, t5 # multiply current digit by 10
-        mul s0, s0, t5 # multiply current total by 10
-        add s0, s0, t4 # add current digit to total
-        addi a0, a0, 1 # increment pointer
-        j loop_exp
-    break:
-        add s0, s0, t4 # add current digit to total
-        sw s0, 0(a1)
-        ret
+    li t3, 10
+        loop:
+            addi a0, a0, 1 // Incrementa o ponteiro do buffer
+            beq t6, t1, end_loop // quando t6 == 1 => achou 5 números
+            lb t0, 0(a0) // Carrega o caractere atual
+            li t2, '-'
+            beq t0, t2, negative // Se for negativo
+            li t2, '+'
+            beq t0, t2, positive // Se for positivo
+            li t2, '0'
+            blt t0, t2, loop
+            li t2, '9'
+            bgt t0, t2, loop
 
-# a0 = LINHA
-parse_limits:
-    la a1, START
-    li t0, ' '
-
-    li t3, 0x0A
-    li t5, 10
-    li s0, 0
-    loop_lim:
-        lb t1, 0(a0)
-        addi t6, t1, -48
+            addi t0, t0, -48
+            lb t4, 1(a0) // Carrega o próximo caractere
+            bgt t4, t2, fim_numero_atual
+            li t2, '0'
+            blt t4, t2, fim_numero_atual
 
 
-        lb t2, 1(a0)
-        beq t2, t0, fim1
-        beq t2, t3, fim
-        mul t6, t6, t5 # multiply current digit by 10
-        mul s0, s0, t5 # multiply current total by 10
-        add s0, s0, t6 # add current digit to total
-        addi a0, a0, 1
-        j loop_lim
-    fim1:
-        add s0, s0, t6 # add current digit to total
-        addi a0, a0, 2
-        sw s0, 0(a1)
-        la a1, END
-        li s0, 0
-        j loop_lim
-    fim:
-        add s0, s0, t6 # add current digit to total
-        sw s0, 0(a1)
-        ret
-/*
-    s0 = (sig1)endˆ(a+1)/(a+1), s1 = (sig2)startˆ(a+1)/(a+1)
-    s4 = (sig2)endˆ(b+1)/(b+1), s5 = (sig2)start^(b+1)/(b+1)
-    s6 = (sig2)end^(c+1)/(c+1), s7 = (sig2)start^(c+1)/(c+1)
+            mul t0, t0, t3 // Multiplica o número atual por 10
+            mul s0, s0, t3 // Multiplica o total por 10
+            add s0, s0, t0 // Adiciona o número atual ao total
+            j loop
 
-*/
+                fim_numero_atual:
+                    add s0, s0, t0 // Adiciona o número atual ao total
+                    sw s0, 0(a1) // Armazena o número atual no array
+                    addi a1, a1, 4 // Avança para o próximo número
+                    li s0, 0 // Reseta o total para o próximo número
+                    addi t6, t6, 1 // Incrementa o contador de números encontrados
+                    j loop
+                negative:
+                    li t2, -1
+                    sw t2, 0(a1) // Armazena o sinal negativo no array
+                    addi a1, a1, 4 // Avança para o próximo número
+                    j loop
+                positive:
+                    li t2, 1
+                    sw t2, 0(a1) // Armazena o sinal positivo no array
+                    addi a1, a1, 4 // Avança para o próximo número
+                    j loop
+                end_loop:
+                    ret
+
+
 calculate_integral:
     addi sp, sp, -4
     sw ra, 0(sp)
-    li t1, '-'
 
+    la t0, INPUT_ARRAY
+    lw s0, 24(t0) // Carrega o valor de START
+    lw s1, 28(t0) // Carrega o valor de END
 
-
-    la t0, END
-    lw a0, 0(t0)
-    la t0, N1
+    // Primeiro termo da integral
+    mv a0, s0 // Carrega o valor de START
     lw t1, 0(t0)
-    addi a1, t1, 1
-    jal raise_to_power # a2 = end^(a+1)
-    div s2, a2, a1 # a2 = end^(a+1)/(a+1)
-    la t0, START
-    lw a0, 0(t0)
-    jal raise_to_power # a2 = start^(a+1)
-    div s3, a2, a1 # a2 = start^(a+1)/(a+1)
-    la t0, S1
-    lb t2, 0(t0)
-    beq t2, t1, 2f
-    mv s1, s3
-    mv s0, s2
-    j 1f
-    2:
-    li t2, -1
-    mul s0, s2, t2
-    mul s1, s3, t2
-    1:
+    lw t2, 4(t0)
+    addi a1, t2, 1 // a1 = a + 1
+    jal raise_to_power // a0 = start, a1 = a + 1, a2 = (start)^(a+1)
+    div s2, a2, a1 // a0 = (start)^(a+1)/(a+1)
 
-    la t0, END
-    lw a0, 0(t0)
-    la t0, N2
-    lw t1, 0(t0)
-    addi a1, t1, 1
-    jal raise_to_power # a2 = end^(b+1)
-    div s2, a2, a1 # a2 = end^(b+1)/(b+1)
-    la t0, START
-    lw a0, 0(t0)
-    jal raise_to_power # a2 = start^(b+1)
-    div s3, a2, a1 # a2 = start^(b+1)/(b+1)
-    la t0, S2
-    lb t2, 0(t0)
-    beq t2, t1, 2f
-    mv s5, s3
-    mv s4, s2
-    j 1f
-    2:
-    li t2, -1
-    mul s4, s2, t2 # s4 = (sig2)end^(b+1)/(b+1)
-    mul s5, s3, t2 # s5 = (sig2)start^(b+1)/(b+1)
-    1:
+    mv a0, s1 // Carrega o valor de END
+    jal raise_to_power // a0 = end, a1 = a + 1, a2 = (end)^(a+1)
+    div s3, a2, a1 // a0 = (end)^(a+1)/(a+1)
 
-    la t0, END
-    lw a0, 0(t0)
-    la t0, N3
-    lw t1, 0(t0)
-    addi a1, t1, 1
-    jal raise_to_power # a2 = end^(c+1)
-    div s2, a2, a1 # a2 = end^(c+1)/(c+1)
-    la t0, START
-    lw a0, 0(t0)
-    jal raise_to_power # a2 = start^(c+1)
-    div s3, a2, a1 # a2 = start^(c+1)/(c+1)
-    la t0, S3
-    lb t2, 0(t0)
-    beq t2, t1, 2f
-    mv s7, s3
-    mv s6, s2
-    j 1f
-    2:
-    li t2, -1
-    mul s6, s2, t2 # s6 = (sig2)end^(c+1)/(c+1)
-    mul s7, s3, t2 # s7 = (sig2)start^(c+1)/(c+1)
-    1:
+    sub s2, s3, s2 // s2 = (end)^(a+1)/(a+1) - (start)^(a+1)/(a+1)
+    mul s2, s2, t1 // s2 = (end)^(a+1)/(a+1) - (start)^(a+1)/(a+1) * sinal
 
-    sub s0, s0, s1
-    sub s4, s4, s5
-    sub s6, s6, s7
 
-    add s0, s0, s4
-    add s0, s0, s6
 
+    // Segundo termo da integral
+    la t0, INPUT_ARRAY
+
+    mv a0, s1 // Carrega o valor de END
+    lw t1, 8(t0) // Carrega o valor de S2
+    lw t2, 12(t0) // Carrega o valor de N2
+    addi a1, t2, 1 // a1 = b + 1
+    jal raise_to_power // a0 = end, a1 = b + 1, a2 = (end)^(b+1)
+    div s3, a2, a1 // s3 = (end)^(b+1)/(b+1)
+
+    mv a0, s0 // Carrega o valor de START
+    jal raise_to_power // a0 = start, a1 = b + 1, a2 = (start)^(b+1)
+    div s4, a2, a1 // s4 = (start)^(b+1)/(b+1)
+
+    sub s4, s3, s4 // s4 = (end)^(b+1)/(b+1) - (start)^(b+1)/(b+1)
+    mul s3, s4, t1 // s3 = (end)^(b+1)/(b+1) - (start)^(b+1)/(b+1) * sinal
+
+    // Terceiro termo da integral
+    la t0, INPUT_ARRAY
+
+    mv a0, s1 // Carrega o valor de END
+    lw t1, 16(t0) // Carrega o valor de S3
+    lw t2, 20(t0) // Carrega o valor de N3
+    addi a1, t2, 1 // a1 = c + 1
+    jal raise_to_power // a0 = end, a1 = c + 1, a2 = (end)^(c+1)
+    div s4, a2, a1 // s4 = (end)^(c+1)/(c+1)
+
+    mv a0, s0 // Carrega o valor de START
+    jal raise_to_power // a0 = start, a1 = c + 1, a2 = (start)^(c+1)
+    div s5, a2, a1 // s5 = (start)^(c+1)/(c+1)
+
+    sub s5, s4, s5 // s5 = (end)^(c+1)/(c+1) - (start)^(c+1)/(c+1)
+    mul s4, s5, t1 // s4 = (end)^(c+1)/(c+1) - (start)^(c+1)/(c+1) * sinal
+
+    // Soma os resultados
+    add s0, s2, s3
+    add s0, s0, s4 // s0 = (end)^(a+1)/(a+1) - (start)^(a+1)/(a+1) * sinal + (end)^(b+1)/(b+1) - (start)^(b+1)/(b+1) * sinal + (end)^(c+1)/(c+1) - (start)^(c+1)/(c+1) * sinal
+
+    // Armazena o resultado final
     la t0, result
-    sw s0, 0(t0)
+    sw s0, 0(t0) // Armazena o resultado no endereço de result
 
     lw ra, 0(sp)
     addi sp, sp, 4
     ret
 
-# a2 = output = input
-invert_sig:
-    li t2, -1
-    mul a2, a2, t2
-    ret
+
+
 # a0 = base
 # a1 = exponent
 # a2 = a0^a1
 raise_to_power:
-    li t1, 1
+    li t5, 1
     mv    t0, a1
     li    a2, 1          # Initialize result = 1
-    beq   t0, t1, done    # Early exit if exponent == 1
+    beq   t0, t5, done    # Early exit if exponent == 1
     loop_pow:
         mul   a2, a2, a0     # result *= base
         addi  t0, t0, -1     # exponent--
@@ -291,12 +206,12 @@ int_to_ascii:
 
     # Handle negative numbers
     li   t1, '-'           # t1 = '-'
-    bge t0, zero, positive      # Skip if positive
+    bge t0, zero, positive_int      # Skip if positive
     sb   t1, 0(a1)         # Store '-'
     addi a1, a1, 1         # Move buffer pointer
     sub t0, zero, t0            # Make t0 positive
 
-    positive:
+    positive_int:
         # Initialize digit counter and stack pointer
         li   t2, 0            # t2 = digit count
         mv   t3, a1           # t3 = start of digits (for reversal)
@@ -341,6 +256,7 @@ write:
 
 
 .bss
+/*
 S1: .skip 1
 N1: .skip 4
 S2: .skip 1
@@ -348,14 +264,25 @@ N2: .skip 4
 S3: .skip 1
 N3: .skip 4
 
+
 START: .skip 4
 END: .skip 4
+*/
+// INPUT_ARRAY[0] = S1, INPUT_ARRAY[4] = N1, INPUT_ARRAY[8] = S2, INPUT_ARRAY[12] = N2
+// INPUT_ARRAY[16] = S3, INPUT_ARRAY[20] = N3, INPUT_ARRAY[24] = START, INPUT_ARRAY[28] = END
+INPUT_ARRAY: .skip 32
 
+
+/*
 LINHA1: .skip 6
 LINHA2: .skip 6
 LINHA3: .skip 6
 LINHA4: .skip 8
+*/
+INPUT: .skip 32
+
 
 result: .skip 4
 output: .skip 11
-
+# .data
+#     INPUT: .string "+ 1 - 2 + 4 32 37"
