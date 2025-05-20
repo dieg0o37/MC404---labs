@@ -10,10 +10,10 @@
 # byte 44-67: message to decrypt (24 bytes) 
 .data
 image_path: .asciz "image.pgm"  # Path to the image file
-decrypted_message: .asciz "Acredite nos seus sonhos\n"
+decrypted_message: .asciz "Acredite nos seus sonhos"
 
 .bss
-image_data: .skip 4109
+image_data: .skip 4110
 
 .text
 .globl _start
@@ -75,10 +75,12 @@ set_canvas_size:
 // a1 = pixel y coordinate
 // a2 = value
 copy_image:
+
     li a7, 63
     li a2, 4109
     la a1, image_data
     ecall
+
     li t1, 4096
     la t0, image_data
     addi t0, t0, 13
@@ -88,15 +90,16 @@ copy_image:
         lb t2, 0(t0)        # ler byte  
 
         mv a2, t2
-        li t2, 64
 
         li a7, 2200
 
         mv a0, t3
-        addi t3, t3, 1
 
         mv a1, t4
         ecall
+
+        li t2, 64
+        addi t3, t3, 1
 
         beq t3, t2, 1f 
         addi t1, t1, -1     # -1 do contador
