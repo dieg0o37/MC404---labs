@@ -44,10 +44,6 @@ main:
     li t0, 10
     sb t0, 0(t1)  # Store a newline character
     jal write_message
-    
-    jal set_canvas_size
-    jal copy_image
-    jal write_decrypted_message
 
     j exit
 
@@ -88,7 +84,14 @@ write_cypher:
 
 
 # RESULT: CYPHER = Length is the key. Allan Turing
-
+open_file:
+    // open image file
+    li a7, 1024         # syscall for open file
+    la a0, image_path   # file path
+    li a1, 2            # RDWR
+    li a2, 0            # mode
+    ecall
+    ret
 
 extract_message:
     la t0, image_data
