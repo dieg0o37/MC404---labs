@@ -13,7 +13,9 @@ image_path: .asciz "image.pgm"  # Path to the image file
 decrypted_message: .asciz "Acredite nos seus sonhos"
 
 .bss
-image_data: .skip 4110
+image_part: .skip 4096
+header: .skip 13
+image_rgba: .skip 4
 
 .text
 .globl _start
@@ -31,7 +33,6 @@ exit:
 # Key: 12
 # decrypted message = "Acredite nos seus sonhos"
 main:
-    jal open_file
     // configure the canvas
     jal set_canvas_size
     // read every byte of the image except the header and copy it to the canvas
@@ -50,17 +51,6 @@ main:
 # 01110011 00100000 01110011 01101111 
 # 01101110 01101000 01101111 01110011
 
-
-// write the decrypted message to the canvas
-open_file:
-    // open image file
-    li a7, 1024         # syscall for open file
-    la a0, image_path   # file path
-    li a1, 2            # RDWR
-    li a2, 0            # mode
-    ecall
-    ret
-
 set_canvas_size:
     li a7, 2201
     li a0, 64
@@ -75,42 +65,61 @@ set_canvas_size:
 // a1 = pixel y coordinate
 // a2 = value
 copy_image:
-
-    li a7, 63
-    li a2, 4109
-    la a1, image_data
+    li a7, 1024         # syscall for open file
+    la a0, image_path   # file path
+    li a1, 2            # RDWR
+    li a2, 0            # mode
     ecall
 
-    li t1, 4096
-    la t0, image_data
-    addi t0, t0, 13
+    li a7, 63
+    li a2, 13
+    la a1, header
+    ecall
+
     li t3, 0                # X
     li t4, 0                # Y
-    copy_loop:
-        lb t2, 0(t0)        # ler byte  
 
-        mv a2, t2
-
-        li a7, 2200
-
-        mv a0, t3
-
-        mv a1, t4
+        li a7, 63
+        li a2, 4096
+        la a1, image_part
         ecall
 
-        li t2, 64
-        addi t3, t3, 1
+        li t1, 4096
+        la t0, image_part       # 8 total parts
+        la t5, image_rgba
+            copy_loop:
+                lb t2, 0(t0)        # ler byte 
+                addi t0, t0, 1      # prox byte
+                addi t1, t1, -1     # -1 do contador
 
-        beq t3, t2, 1f 
-        addi t1, t1, -1     # -1 do contador
-        beq t1, zero, break # se contador = 0 break
-        j copy_loop
-        1:
-            li t3, 0
-            addi t4, t4, 1
-            j copy_loop
-        break:
-            ret
+                sb t2, 0(t5)
+                sb t2, 1(t5)
+                sb t2, 2(t5)
+                li t2, 255
+                sb t2, 3(t5)
+                
+                mv a2, t5
+
+                li a7, 2200
+
+                mv a0, t3
+
+                mv a1, t4
+                ecall
+
+                bge zero, t1, break # se contador <= 0 break
+
+                li t2, 64
+                addi t3, t3, 1
+                beq t3, t2, 1f 
+
+                j copy_loop
+                1:
+                    li t3, 0
+                    addi t4, t4, 1
+                    j copy_loop
+                break:
+                    ret
     
 write_decrypted_message:
 ret
