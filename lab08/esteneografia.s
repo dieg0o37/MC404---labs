@@ -11,26 +11,101 @@
 .data
 image_path: .asciz "image.pgm"  # Path to the image file
 decrypted_message: .asciz "Acredite nos seus sonhos"
-// 7, 8, 14, 19
-// 7: e -> u  01100101 -> 01110101
-// 8: ' ' -> ( 00100000 -> 00101000
-// 14: e -> g 01100101 -> 01100111
-// 19: o ->  01101111
 
 .bss
 image_part: .skip 4096
 header: .skip 13
 image_rgba: .skip 4
+image_data: .skip 453
+shift_text: .skip 249
+message_text: .skip 193
 
 .text
+.globl _start
 
-# decrypted message in binary = 
-# 01000001 01100011 01110010 01100101
-# 01100100 01101001 01110100 01100101 
-# 00100000 01101110 01101111 01110011 
-# 00100000 01110011 01100101 01110101
-# 01110011 00100000 01110011 01101111 
-# 01101110 01101000 01101111 01110011
+_start: 
+    j main
+
+exit:
+    li a7, 93
+    li a0, 0
+    ecall
+
+main:
+    jal open_file
+    
+    // read first 68 bytes = header + cypher shift + message
+    jal read_image
+
+    jal extract_cypher
+    
+    jal extract_message
+
+    jal set_canvas_size
+
+    jal copy_image
+
+    j exit
+
+
+open_file:
+    // open image file
+    li a7, 1024         # syscall for open file
+    la a0, image_path   # file path
+    li a1, 2            # RDWR
+    li a2, 0            # mode
+    ecall
+    ret
+
+read_image:
+    li a7, 63
+    la a1, image_data
+    li a2, 453        # read 44 bytes (header + cypher shift + message)
+    ecall
+    ret
+
+/*
+    The cypher is coded into the first LSB bit of each of the first 31 bytes of the image.
+    The message to decrypt is coded into the first LSB bit of each of the next 24 bytes of the image.
+*/
+extract_cypher:
+    la t0, image_data
+    addi t0, t0, 13      # Skip header (13 bytes)
+    li t2, 248
+    la t1, shift_text
+    extract_loop:
+        lb t3, 0(t0)          # Load byte from image data
+        andi t4, t3, 1        # Extract LSB
+        addi t4, t4, 48       # Convert to ASCII ('0' or '1')
+        sb t4, 0(t1)          # Store LSB in shift_text
+        addi t0, t0, 1        # Move to next byte
+        addi t1, t1, 1        # Move to next byte in shift_text
+        addi t2, t2, -1       # Decrement counter
+        bnez t2, extract_loop # Repeat until 31 bytes processed
+    ret
+
+# RESULT: CYPHER = Length is the key. Allan Turing
+
+extract_message:
+    la t0, image_data
+    addi t0, t0, 261      # Skip header + cypher (44 bytes)
+    li t2, 192
+    la t1, message_text
+    message_loop:
+        lb t3, 0(t0)          # Load byte from image data
+        andi t4, t3, 1        # Extract LSB
+        addi t4, t4, 48       # Convert to ASCII ('0' or '1')
+        sb t4, 0(t1)          # Store LSB in message_text
+        addi t0, t0, 1        # Move to next byte
+        addi t1, t1, 1        # Move to next byte in message_text
+        addi t2, t2, -1       # Decrement counter
+        bnez t2, message_loop # Repeat until 24 bytes processed
+    ret
+
+# RESULT: MESSAGE = Modqpufq zae eqge eaztae
+
+# Key: 12
+# decrypted message = "Acredite nos seus sonhos"
 
 set_canvas_size:
     li a7, 2201
@@ -90,9 +165,9 @@ copy_image:
         sw t5, 24(sp)    # 28
 
         li t2, 192
+        bgt t1, t2, no_message
         # a0 = current byte
         # a1 = contador (0 - 191)
-        bgt t1, t2, no_message
         jal correct_byte
 
         no_message:
@@ -130,139 +205,34 @@ copy_image:
             lw ra, 0(sp) 
             addi sp, sp, 32
             ret
-    
+# a0 = current byte
+# a1 = contador (0 - 191)
 correct_byte:
-    la t0, decrypted_message
-    li t1, 191
+    la t0, decrypted_message    # carrega msg decriptografada
+    li t1, 191                  
     li t6, -1
     mul a1, a1, t6
-    add t1, t1, a1
+    add t1, t1, a1              # 191 - contador = index_rel (ex: 191 - 190 = 1)
 
-    li t3, 8
-    div t2, t1, t3
-    rem t1, t1, t3
+    li t3, 8                    
+    div t2, t1, t3              # index_atual = index_rel//8 (ex: 1//8 = 0)
+    rem t1, t1, t3              # index_bit = index_relmod8 (ex: 1mod8 = 1)
+
     # t2 = index do byte a ser copiado
-    add t0, t0, t2              # ajusta a posição de leitura
+    add t0, t0, t2              # ajusta a posição de leitura (ex: 0 + 0 = 0)
 
-    li t3, -128                 # bit mask
-    srl t3, t3, t1              # ajusta a posição da mask
+    li t3, -128                 # bit mask (0b10000000)
+    srl t3, t3, t1              # ajusta a posição da mask (0b10000000 >> 1 = 0b01000000)
 
-    lb t4, 0(t0)                # carrega o byte atual da msg
-    and t4, t4, t3              # separa o bit atual
+    lb t4, 0(t0)                # carrega o byte atual da msg (ex: 01000001)
+    and t4, t4, t3              # separa o bit atual  (ex: 0b01000001 and 0b01000000 = 0b01000000)
 
     li t3, 7
     mul t1, t1, t6                    
-    add t3, t3, t1             
-    srl t4, t4, t3              # coloca o bit atual na direita
+    add t3, t3, t1              # 7 - index_rel (ex: 7 - 1 = 6)             
+    srl t4, t4, t3              # coloca o bit atual na direita (ex: 0b01000000 >> 6 = 0b00000001)
 
-    or a0, a0, t4               # atualiza o byte atual
+    # Atualizar o byte atual: 0b011111111
+    sub a0, a0, t4              # ex: 0b011111111 - 0b00000001 = 0b011111110
 
     ret
-# FILE THAT FINDS THE MESSAGE AND CYPHER AND PRINTS TO THE TERMINAL
-# pgm image format:
-# (Total bytes in the header: 13)
-# [IMAGE DATA] (4096 bytes)
-# Only read first 55 bytes of image.
-# byte 0-2: P5\n (3 bytes)
-# byte 3-8: 64 64\n (6 bytes)
-# byte 9-12: 255\n (4 bytes)
-# byte 13-43: ceasers cipher (31 bytes)
-# byte 44-67: message to decrypt (24 bytes) 
-.bss
-image_data: .skip 453
-shift_text: .skip 249
-message_text: .skip 193
-
-.text
-.globl _start
-
-_start: 
-    j main
-
-exit:
-    li a7, 93
-    li a0, 0
-    ecall
-
-
-main:
-    jal open_file
-    
-    // read first 68 bytes = header + cypher shift + message
-    jal read_image
-    jal extract_cypher
-    
-    jal extract_message
-
-    jal set_canvas_size
-
-    jal copy_image
-
-    j exit
-
-read_image:
-    li a7, 63
-    la a1, image_data
-    li a2, 453        # read 44 bytes (header + cypher shift + message)
-    ecall
-    ret
-
-/*
-    The cypher is coded into the first LSB bit of each of the first 31 bytes of the image.
-    The message to decrypt is coded into the first LSB bit of each of the next 24 bytes of the image.
-*/
-extract_cypher:
-    la t0, image_data
-    addi t0, t0, 13      # Skip header (13 bytes)
-    li t2, 248
-    la t1, shift_text
-    extract_loop:
-        lb t3, 0(t0)          # Load byte from image data
-        andi t4, t3, 1        # Extract LSB
-        addi t4, t4, 48       # Convert to ASCII ('0' or '1')
-        sb t4, 0(t1)          # Store LSB in shift_text
-        addi t0, t0, 1        # Move to next byte
-        addi t1, t1, 1        # Move to next byte in shift_text
-        addi t2, t2, -1       # Decrement counter
-        bnez t2, extract_loop # Repeat until 31 bytes processed
-    ret
-
-# RESULT: CYPHER = Length is the key. Allan Turing
-open_file:
-    // open image file
-    li a7, 1024         # syscall for open file
-    la a0, image_path   # file path
-    li a1, 2            # RDWR
-    li a2, 0            # mode
-    ecall
-    ret
-
-extract_message:
-    la t0, image_data
-    addi t0, t0, 261      # Skip header + cypher (44 bytes)
-    li t2, 192
-    la t1, message_text
-    message_loop:
-        lb t3, 0(t0)          # Load byte from image data
-        andi t4, t3, 1        # Extract LSB
-        addi t4, t4, 48       # Convert to ASCII ('0' or '1')
-        sb t4, 0(t1)          # Store LSB in message_text
-        addi t0, t0, 1        # Move to next byte
-        addi t1, t1, 1        # Move to next byte in message_text
-        addi t2, t2, -1       # Decrement counter
-        bnez t2, message_loop # Repeat until 24 bytes processed
-    ret
-
-# RESULT: MESSAGE = Modqpufq zae eqge eaztae
-
-
-# Key: 12
-# decrypted message = "Acredite nos seus sonhos"
-
-# decrypted message in binary = 
-# 01000001 01100011 01110010 01100101
-# 01100100 01101001 01110100 01100101 
-# 00100000 01101110 01101111 01110011 
-# 00100000 01110011 01100101 01110101
-# 01110011 00100000 01110011 01101111 
-# 01101z
