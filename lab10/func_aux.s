@@ -23,7 +23,7 @@ puts:
     sw s1, 4(sp)        # Salva s1 (ponteiro do buffer temporario)
 
     mv s0, a0           # s0 = ponteiro da string (str)
-    addi s1, sp, 0      # s1 = buffer temporario de 1 byte na pilha
+    mv s1, sp           # s1 = buffer temporario de 1 byte na pilha
 
     puts_loop:
         lb t0, 0(s0)        # Carrega um byte (caractere) da string
