@@ -10,51 +10,59 @@ exit:
     li a7, 93       # Carrega o numero da syscall exit (93)
     ecall           # Chama o sistema operacional
 
+# Defines a newline character in the data section
+.data
+newline: .asciz "\n"
+
+.text
 # ------------------------------------------------------------------------------
 # puts(const char *str) -> a0 = str
-# Escreve a string str na saida padrao (stdout) seguida de uma nova linha.
-# Usa a syscall write (64).
+# Writes the string str to stdout followed by a newline using single syscalls.
+# THIS VERSION IS MUCH MORE EFFICIENT.
 # ------------------------------------------------------------------------------
 .globl puts
 puts:
-    addi sp, sp, -16    # Aloca espaco na pilha
-    sw ra, 12(sp)       # Salva o endereco de retorno (ra)
+    addi sp, sp, -16    # Aloca espaço na pilha
+    sw ra, 12(sp)       # Salva o endereço de retorno (ra)
     sw s0, 8(sp)        # Salva s0 (ponteiro da string)
-    sw s1, 4(sp)        # Salva s1 (ponteiro do buffer temporario)
+    sw s1, 4(sp)        # Salva s1 (contador de tamanho)
 
     mv s0, a0           # s0 = ponteiro da string (str)
-    mv s1, sp           # s1 = buffer temporario de 1 byte na pilha
+    li s1, 0            # s1 = contador de tamanho (len)
 
-    puts_loop:
-        lb t0, 0(s0)        # Carrega um byte (caractere) da string
-        beqz t0, puts_newline # Se for NULL (\0), vai para a nova linha
+    # Loop para calcular o tamanho da string (strlen)
+    strlen_loop:
+        add t0, s0, s1      # t0 = str + len
+        lb t1, 0(t0)        # Carrega o caractere atual
+        beqz t1, strlen_end # Se for NULL (\0), termina o loop
+        addi s1, s1, 1      # len++
+        j strlen_loop       # Repete
 
-        sb t0, 0(s1)        # Armazena o caractere no buffer temporario
+    strlen_end:
+        # Se o tamanho for 0, pula para imprimir a nova linha
+        beqz s1, puts_newline
+
+        # Syscall para escrever a string inteira
         li a7, 64           # Syscall write (64)
         li a0, 1            # File descriptor 1 (stdout)
-        mv a1, s1           # Endereco do buffer (o nosso temp de 1 byte)
-        li a2, 1            # Quantidade de bytes (1)
+        mv a1, s0           # Endereço da string
+        mv a2, s1           # Tamanho da string
         ecall               # Chama a syscall
 
-        addi s0, s0, 1      # Avanca para o proximo caractere na string
-        j puts_loop         # Repete o loop
-
     puts_newline:
-        li t0, 10           # Carrega '\n'
-        sb t0, 0(s1)        # Armazena '\n' no buffer temporario
+        # Syscall para escrever a nova linha
         li a7, 64           # Syscall write
         li a0, 1            # stdout
-        mv a1, s1           # Buffer
-        li a2, 1            # Count
+        la a1, newline      # Endereço do caractere '\n'
+        li a2, 1            # Tamanho (1 byte)
         ecall               # Chama a syscall
 
     puts_end:
         lw s1, 4(sp)        # Restaura s1
         lw s0, 8(sp)        # Restaura s0
         lw ra, 12(sp)       # Restaura ra
-        addi sp, sp, 16     # Desaloca espaco da pilha
-        ret                 # Retorna
-
+        addi sp, sp, 16     # Desaloca espaço da pilha
+        ret  
 # ------------------------------------------------------------------------------
 # gets(char *str) -> a0 = str
 # Le uma linha da entrada padrao (stdin) para a string str.
