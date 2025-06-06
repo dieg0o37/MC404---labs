@@ -145,7 +145,7 @@ torre_de_hanoi:
 
     # Chama puts com a string formatada
     mv a0, s4
-    jal puts
+    jal print_hanoi_s
 
     j hanoi_end         # Fim para num == 1
 
@@ -171,7 +171,7 @@ hanoi_recursive_step:
     sb s1, 23(s4)       # Coloca char 'de'
     sb s3, 38(s4)       # Coloca char 'ate'
     mv a0, s4
-    jal puts
+    jal print_hanoi_s
     
     
 
