@@ -6,6 +6,7 @@
 # int fatorial_recursive(int num) -> a0 = num
 # Retorna num!
 # ------------------------------------------------------------------------------
+.text
 .globl fatorial_recursive
 fatorial_recursive:
     addi sp, sp, -8     # Aloca espaco para ra e s0 (num)
