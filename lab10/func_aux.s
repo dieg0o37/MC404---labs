@@ -253,3 +253,28 @@ itoa:
         lw ra, 44(sp)
         addi sp, sp, 48     # Desaloca pilha
         ret                 # Retorna
+# ------------------------------------------------------------------------------
+# Much more efficient function to print the Tower of Hanoi moves.
+# print_hanoi_s(str_fmt) -> a0 = str_fmt
+# Functions like puts but with a fixed size for the string.
+# -------------------------------------------------------------------------------
+.globl print_hanoi_s
+print_hanoi_s:
+    addi sp, sp, -16    # Aloca espaco na pilha
+    sw s0, 12(sp)       # Salva s0 newline
+    mv a1, a0           # a1 = str_fmt (ponteiro da string)
+
+    la s0, newline      # Carrega o endereco da string de nova linha
+    lb t0, 0(s0)        # Carrega o caractere de nova linha
+    sb t0, 40(a1)       # Adiciona o caractere de nova linha no final da string
+
+    # Imprime a string formatada
+    li a7, 64           # Syscall write (64)
+    li a0, 1            # File descriptor 1 (stdout)
+    li a2, 41           # Tamanho fixo da string (41 bytes)
+    ecall               # Chama a syscall
+
+    lw s0, 12(sp)       # Restaura s0
+    addi sp, sp, 16     # Desaloca espaco da pilha
+    ret
+# ------------------------------------------------------------------------------
