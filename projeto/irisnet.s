@@ -7,6 +7,7 @@ VETOR_ATIVACAO_1: .skip 400     # Buffer para armazenar o vetor de ativação c
 NUMERO_CAMADAS: .skip 4
 VETOR_FINAL: .skip 12           # Buffer para armazenar o vetor final (3 tipos de plantas)
 OUTPUT: .skip 4                 # Buffer para armazenar o index da planta escolhida (0, 1 ou 2)
+OUTPUT_BUFFER: .skip 2          # Buffer para armazenar o resultado final (0, 1 ou 2) + '\n'
 
 .text
 .globl _start
@@ -388,4 +389,78 @@ mult_end:
     lw ra, 12(sp)      # Restaura registradores
     lw s6, 8(sp)
     addi sp, sp, 16    # Desaloca espaço na pilha
+    ret
+# ------------------------------------------------------------------------------
+# Função: max (Argmax)
+# Descrição: Encontra o índice do maior valor no vetor final.
+# Argumentos:
+#   a0: Ponteiro para o vetor de ativação final.
+# Retorno/Efeitos:
+#   - Armazena o índice do maior valor no buffer 'OUTPUT'.
+# ------------------------------------------------------------------------------
+max:
+    addi sp, sp, -16
+    sw ra, 12(sp)
+    sw s1, 8(sp)      # s1: tamanho do vetor (será 3)
+    sw s2, 4(sp)      # s2: valor máximo encontrado
+
+    li s1, 3          # O tamanho do vetor final é sempre 3 para este problema
+    
+    # Inicializa o valor máximo com o primeiro elemento
+    lw s2, 0(a0)
+    li t0, 0          # t0 = índice atual
+    li t1, 0          # t1 = índice do máximo
+
+max_loop:
+    beq t0, s1, max_end # Se já verificou todos os elementos, termina
+    
+    lw t2, 0(a0)      # Carrega o valor atual v[i]
+    ble t2, s2, max_continue # Se v[i] <= max_val, continua
+
+    # Novo máximo encontrado
+    mv s2, t2         # Atualiza o valor máximo
+    mv t1, t0         # Atualiza o índice do máximo
+
+max_continue:
+    addi a0, a0, 4    # Avança o ponteiro do vetor
+    addi t0, t0, 1    # i++
+    j max_loop
+
+max_end:
+    la t2, OUTPUT
+    sw t1, 0(t2)      # Salva o índice final na variável global OUTPUT
+
+    lw ra, 12(sp)
+    lw s1, 8(sp)
+    lw s2, 4(sp)
+    addi sp, sp, 16
+    ret
+# ------------------------------------------------------------------------------
+# Função: escrever_resultado
+# Descrição: Imprime o índice final na saída padrão.
+# Argumentos: Nenhum. Lê do buffer 'OUTPUT'.
+# Retorno/Efeitos: Imprime um número (0, 1 ou 2) e uma nova linha.
+# ------------------------------------------------------------------------------
+escrever_resultado:
+    # Carrega o resultado (0, 1 ou 2) de OUTPUT
+    la t0, OUTPUT
+    lw a0, 0(t0)
+
+    # Converte o inteiro para seu caractere ASCII correspondente
+    addi a0, a0, 48   # Converte para ASCII
+    
+    # Armazena o caractere no buffer de ASCII para impressão
+    la t1, OUTPUT_BUFFER
+    sb a0, 0(t1)
+    
+    # Adiciona uma quebra de linha
+    li t2, 10           # '\n'
+    sb t2, 1(t1)
+
+    # Prepara a syscall 'write'
+    li a7, 64               # Syscall para write
+    li a0, 1                # 1 = stdout (saída padrão)
+    la a1, OUTPUT_BUFFER    # Ponteiro para a string a ser impressa
+    li a2, 2                # Tamanho da string (ex: '1' e '\n')
+    ecall
     ret
