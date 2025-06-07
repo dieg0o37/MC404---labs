@@ -248,7 +248,7 @@ parse_vetor_inicial:
     la s1, VETOR_ATIVACAO_0 # Ponteiro para o buffer de ativação
 
     li s2, 0                # Inicializa o contador de entradas
-    
+
 parse_vetor_loop:
     beq s2, s0, fim_parse_vetor  # Se já leu todos os valores, termina
     jal ler_prox_int          # Lê o próximo inteiro
@@ -264,3 +264,127 @@ fim_parse_vetor:
     lw s2, 0(sp)        # Restaura o contador de entradas
     addi sp, sp, 16     # Desaloca espaço na pilha
     ret 
+# ------------------------------------------------------------------------------
+# Função: irisnet
+# Descrição: Função principal da rede neural, chama a função de multiplicação de matriz por vetor para cada camada.
+# Argumentos: Nenhum. Usa as variáveis globais.
+# Retorno:
+#   a0: Ponteiro para o vetor de ativação da última camada.
+# ------------------------------------------------------------------------------
+irisnet:
+    addi sp, sp, -32  # Aloca espaço na pilha
+    sw ra, 28(sp)     # Salva registradores s
+    sw s0, 24(sp)     # s0: contador de matrizes a processar (N-1)
+    sw s1, 20(sp)     # s1: ponteiro para o array TAM_CAMADAS
+    sw s2, 16(sp)     # s2: ponteiro para o array PESOS_MATRIZ
+    sw s3, 12(sp)     # s3: ponteiro para o vetor de ativação de ENTRADA da camada
+    sw s4, 8(sp)      # s4: ponteiro para o vetor de ativação de SAÍDA da camada
+    sw s5, 4(sp)      # s5: salva temporariamente s3 ou s4 para a troca
+
+    # --- Inicialização ---
+    la t0, NUMERO_CAMADAS
+    lw s0, 0(t0)
+    addi s0, s0, -1         # s0 = Número de camadas - 1 (total de matrizes de peso)
+    
+    la s1, TAM_CAMADAS      # Ponteiro para os tamanhos das camadas
+    la s2, PESOS_MATRIZ     # Ponteiro para o início dos pesos
+    la s3, VETOR_ATIVACAO_0 # O primeiro vetor de entrada é o VETOR_ATIVACAO_0
+    la s4, VETOR_ATIVACAO_1 # O primeiro vetor de saída será o VETOR_ATIVACAO_1
+
+irisnet_loop:
+    beqz s0, irisnet_end    # Se o contador de matrizes chegou a zero, termina.
+
+    # --- Prepara os argumentos para a função de multiplicação ---
+    lw a0, 0(s1)          # a0 = N_in (tamanho da camada de entrada)
+    lw a1, 4(s1)          # a1 = N_out (tamanho da camada de saída)
+    mv a2, s2             # a2 = ponteiro para a matriz de pesos atual
+    mv a3, s3             # a3 = ponteiro para o vetor de ativação de entrada
+    mv a4, s4             # a4 = ponteiro para o vetor de ativação de saída
+
+    jal mult_matriz_vetor_relu # Executa a multiplicação e ReLU para a camada
+
+    # --- Atualização para a próxima iteração ---
+    
+    # Avança o ponteiro de pesos para a próxima matriz
+    lw t0, 0(s1)          # N_in
+    lw t1, 4(s1)          # N_out
+    mul t2, t0, t1        # Total de pesos na matriz atual = N_in * N_out
+    slli t2, t2, 2        # Multiplica por 4 (bytes por inteiro) para obter o tamanho em bytes
+    add s2, s2, t2        # s2 aponta para a próxima matriz
+
+    # Avança o ponteiro dos tamanhos de camada
+    addi s1, s1, 4
+
+    # Troca os buffers de ativação para a próxima camada
+    mv s5, s3
+    mv s3, s4
+    mv s4, s5
+
+    addi s0, s0, -1       # Decrementa o contador de matrizes
+    j irisnet_loop
+
+irisnet_end:
+    mv a0, s3             # O resultado final está no último buffer apontado por s3
+
+    lw ra, 28(sp)     # Restaura registradores
+    lw s0, 24(sp)
+    lw s1, 20(sp)
+    lw s2, 16(sp)
+    lw s3, 12(sp)
+    lw s4, 8(sp)
+    lw s5, 4(sp)
+    addi sp, sp, 32
+    ret
+# ------------------------------------------------------------------------------
+# Função: mult_matriz_vetor_relu
+# Descrição: Calcula z = W * a e aplica ReLU(z) para uma camada.
+# Argumentos:
+#   a0: N_in  (número de neurônios na camada de entrada = número de colunas de W[c])
+#   a1: N_out (número de neurônios na camada de saída = número de linhas de W[c])
+#   a2: Ponteiro para o início da matriz de pesos W[c] (N_out x N_in)
+#   a3: Ponteiro para o vetor de ativação de entrada 'a'
+#   a4: Ponteiro para o vetor de ativação de saída 'z'
+# ------------------------------------------------------------------------------
+mult_matriz_vetor_relu:
+    addi sp, sp, -16
+    sw ra, 12(sp)
+    sw s6, 8(sp)      # s6: acumulador
+
+    # Loop externo: itera sobre cada neurônio da camada de saída (i)
+    li t0, 0 # i = 0
+outer_loop:
+    beq t0, a1, mult_end # se i == N_out, termina
+
+    # Loop interno: itera sobre cada neurônio da camada de entrada (j)
+    li t1, 0 # j = 0
+    li s6, 0 # acumulador = 0
+    mv t2, a3 # t2 = ponteiro temporário para o vetor 'a', reseta para cada neurônio 'i'
+inner_loop:
+    beq t1, a0, inner_loop_end # se j == N_in, termina o loop interno
+
+    lw t3, 0(a2)  # t3 = W[i][j]
+    lw t4, 0(t2)  # t4 = a[j]
+    
+    mul t5, t3, t4
+    add s6, s6, t5 # acumulador += W[i][j] * a[j]
+
+    addi a2, a2, 4 # avança ponteiro W
+    addi t2, t2, 4 # avança ponteiro 'a' temporário
+    addi t1, t1, 1 # j++
+    j inner_loop
+inner_loop_end:
+    # --- Aplica ReLU ---
+    bgez s6, relu_end # se acumulador >= 0, pula
+    li s6, 0          # se for negativo, zera
+relu_end:
+    sw s6, 0(a4)      # Salva o resultado final em z[i]
+
+    addi a4, a4, 4    # avança ponteiro z
+    addi t0, t0, 1    # i++
+    j outer_loop
+
+mult_end:
+    lw ra, 12(sp)
+    lw s6, 8(sp)
+    addi sp, sp, 16
+    ret
