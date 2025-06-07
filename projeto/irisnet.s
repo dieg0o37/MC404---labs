@@ -187,7 +187,7 @@ parse_pesos:
     li s2, 0                # Inicializa o contador de camadas (0, N - 1)
 
     la t0, TAM_CAMADAS      # Ponteiro para o vetor de tamanhos das camadas
-    
+
 parse_pesos_camada_loop:
     lw t1, 0(t0)      # Carrega o tamanho da camada atual
     lw t2, 4(t0)      # Carrega o tamanho da próxima camada
@@ -237,3 +237,37 @@ fim_parse_pesos:
     lw s2, 0(sp)        # Restaura o contador de camadas
     addi sp, sp, 16     # Desaloca espaço na pilha
     ret                 # Retorna para o chamador
+# ------------------------------------------------------------------------------
+# Função: parse_vetor_inicial
+# Descrição: Analisa a última linha para obter o vetor de entrada da rede.
+# Argumentos:
+#   - a0: Ponteiro para o início da linha de entrada.
+# Retorno/Efeitos:
+#   - Atualiza o buffer VETOR_ATIVACAO_0 com os valores lidos.
+# ------------------------------------------------------------------------------
+parse_vetor_inicial:
+    addi sp, sp, -16  # Aloca espaço na pilha
+    sw ra, 12(sp)     # Salva o endereço de retorno
+    sw s0, 8(sp)      # Salva o número de valores na camada de entrada
+    sw s1, 4(sp)      # Salva o ponteiro para o vetor de ativação
+    sw s2, 0(sp)      # Salva o contador de entradas
+
+    la s0, TAM_CAMADAS      # Ponteiro para o número de valores na camadas
+    lw s0, 0(s0)            # Carrega o número de valores na camada de entrada
+    la s1, VETOR_ATIVACAO_0 # Ponteiro para o buffer de ativação
+
+    li s2, 0                # Inicializa o contador de entradas
+parse_vetor_loop:
+    beq s2, s0, fim_parse_vetor  # Se já leu todos os valores, termina
+    jal ler_prox_int          # Lê o próximo inteiro
+    sw a1, 0(s1)              # Armazena o valor lido no vetor de ativação
+    addi s1, s1, 4            # Avança para o próximo espaço no vetor de ativação
+    addi s2, s2, 1            # Incrementa o contador de entradas
+    j parse_vetor_loop        # Continua lendo valores
+fim_parse_vetor:
+    lw ra, 12(sp)       # Restaura o endereço de retorno
+    lw s0, 8(sp)        # Restaura o número de valores na camada de entrada
+    lw s1, 4(sp)        # Restaura o ponteiro para o vetor de ativação
+    lw s2, 0(sp)        # Restaura o contador de entradas
+    addi sp, sp, 16     # Desaloca espaço na pilha
+    ret 
