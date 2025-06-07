@@ -131,8 +131,8 @@ parse_end:
 parse_arquitetura:
     addi sp, sp, -16  # Aloca espaço na pilha
     sw ra, 12(sp)     # Salva o endereço de retorno
-    sw s0, 8(sp)      # Salva o contador de camadas
-    sw s1, 4(sp)      # Salva o ponteiro para o Array de camadas
+    sw s0, 8(sp)      # s0: contador de camadas
+    sw s1, 4(sp)      # s1: ponteiro para o Array de camadas
 
     la s1, TAM_CAMADAS  # Ponteiro para o vetor de tamanhos das camadas
     li s0, 0            # Inicializa o contador de camadas
@@ -164,7 +164,7 @@ fim_parse_arq:
     lw s0, 8(sp)        # Restaura o contador de camadas
     lw s1, 4(sp)        # Restaura o ponteiro para o Array de camadas
     addi sp, sp, 16     # Desaloca espaço na pilha
-    ret                 # Retorna para o chamador
+    ret                 
 # ------------------------------------------------------------------------------
 # Função: parse_pesos
 # Descrição: Analisa a segunda linha e extrai todos os pesos.
@@ -176,11 +176,11 @@ fim_parse_arq:
 # ------------------------------------------------------------------------------
 parse_pesos:
     addi sp, sp, -32   # Aloca espaço na pilha
-    sw ra, 28(sp)      # Salva o endereço de retorno
-    sw s0, 24(sp)      # Salva o numero de camadas
-    sw s1, 20(sp)      # Salva o ponteiro para o Array de pesos
-    sw s3, 16(sp)      # Salva o ponteiro para o vetor de tamanhos das camadas
-    sw s5, 12(sp)      # Salva o número de pesos para cada camada
+    sw ra, 28(sp)      # salva o endereço de retorno
+    sw s0, 24(sp)      # s0: numero de camadas
+    sw s1, 20(sp)      # s1: ponteiro para o Array de pesos PESOS_MATRIZ
+    sw s3, 16(sp)      # s3: ponteiro para o vetor de tamanhos das camadas
+    sw s5, 12(sp)      # s5: número de pesos para cada camada
 
     la s0, NUMERO_CAMADAS   # Ponteiro para o número de camadas
     lw s0, 0(s0)            # Carrega o número de camadas
@@ -188,7 +188,6 @@ parse_pesos:
     addi s0, s0, -1         # Inicializa o contador de matrizes de pesos (de há N camadas ent há N-1 matrizes)
 
     la s3, TAM_CAMADAS      # Ponteiro para o vetor de tamanhos das camadas
-
 parse_pesos_camada_loop:
     lw t1, 0(s3)      # Carrega o tamanho da camada atual
     lw t2, 4(s3)      # Carrega o tamanho da próxima camada
@@ -221,13 +220,13 @@ prox_linha_pesos:
 fim_parse_pesos:
     addi a0, a0, 1              # Avança o ponteiro para pular o '\n'
 
-    lw ra, 28(sp)       # Restaura o endereço de retorno
-    lw s0, 24(sp)       # Restaura o número de camadas
-    lw s1, 20(sp)       # Restaura o ponteiro para o buffer de pesos
-    lw s3, 16(sp)       # Restaura o ponteiro para o vetor de tamanhos das camadas
-    lw s5, 12(sp)       # Restaura o número de pesos para cada camada   
+    lw ra, 28(sp)       # Restaura os registradores
+    lw s0, 24(sp)       
+    lw s1, 20(sp)       
+    lw s3, 16(sp)       
+    lw s5, 12(sp)         
     addi sp, sp, 32     # Desaloca espaço na pilha
-    ret                 # Retorna para o chamador
+    ret            
 # ------------------------------------------------------------------------------
 # Função: parse_vetor_inicial
 # Descrição: Analisa a última linha para obter o vetor de entrada da rede.
@@ -239,9 +238,9 @@ fim_parse_pesos:
 parse_vetor_inicial:
     addi sp, sp, -16  # Aloca espaço na pilha
     sw ra, 12(sp)     # Salva o endereço de retorno
-    sw s0, 8(sp)      # Salva o número de valores na camada de entrada
-    sw s1, 4(sp)      # Salva o ponteiro para o vetor de ativação
-    sw s2, 0(sp)      # Salva o contador de entradas
+    sw s0, 8(sp)      # s0: número de valores na camada de entrada
+    sw s1, 4(sp)      # s1: ponteiro para o vetor de ativação inicial
+    sw s2, 0(sp)      # s2: o contador de entradas
 
     la s0, TAM_CAMADAS      # Ponteiro para o número de valores na camadas
     lw s0, 0(s0)            # Carrega o número de valores na camada de entrada
@@ -258,10 +257,10 @@ parse_vetor_loop:
     j parse_vetor_loop        # Continua lendo valores
 
 fim_parse_vetor:
-    lw ra, 12(sp)       # Restaura o endereço de retorno
-    lw s0, 8(sp)        # Restaura o número de valores na camada de entrada
-    lw s1, 4(sp)        # Restaura o ponteiro para o vetor de ativação
-    lw s2, 0(sp)        # Restaura o contador de entradas
+    lw ra, 12(sp)       # Restaura registradores
+    lw s0, 8(sp)        
+    lw s1, 4(sp)        
+    lw s2, 0(sp)        
     addi sp, sp, 16     # Desaloca espaço na pilha
     ret 
 # ------------------------------------------------------------------------------
@@ -273,7 +272,7 @@ fim_parse_vetor:
 # ------------------------------------------------------------------------------
 irisnet:
     addi sp, sp, -32  # Aloca espaço na pilha
-    sw ra, 28(sp)     # Salva registradores s
+    sw ra, 28(sp)     # Salva o endereço de retorno
     sw s0, 24(sp)     # s0: contador de matrizes a processar (N-1)
     sw s1, 20(sp)     # s1: ponteiro para o array TAM_CAMADAS
     sw s2, 16(sp)     # s2: ponteiro para o array PESOS_MATRIZ
@@ -316,6 +315,8 @@ irisnet_loop:
     addi s1, s1, 4
 
     # Troca os buffers de ativação para a próxima camada
+    # VETOR_ATIVACAO_0 e VETOR_ATIVACAO_1 ficam alternando
+    # s3 aponta para o vetor de ativação de entrada da próxima camada
     mv s5, s3
     mv s3, s4
     mv s4, s5
@@ -326,14 +327,14 @@ irisnet_loop:
 irisnet_end:
     mv a0, s3             # O resultado final está no último buffer apontado por s3
 
-    lw ra, 28(sp)     # Restaura registradores
+    lw ra, 28(sp)         # Restaura registradores
     lw s0, 24(sp)
     lw s1, 20(sp)
     lw s2, 16(sp)
     lw s3, 12(sp)
     lw s4, 8(sp)
     lw s5, 4(sp)
-    addi sp, sp, 32
+    addi sp, sp, 32       # Desaloca espaço na pilha
     ret
 # ------------------------------------------------------------------------------
 # Função: mult_matriz_vetor_relu
@@ -384,7 +385,7 @@ relu_end:
     j outer_loop
 
 mult_end:
-    lw ra, 12(sp)
+    lw ra, 12(sp)      # Restaura registradores
     lw s6, 8(sp)
-    addi sp, sp, 16
+    addi sp, sp, 16    # Desaloca espaço na pilha
     ret
