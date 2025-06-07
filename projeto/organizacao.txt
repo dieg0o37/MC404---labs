@@ -1,0 +1,50 @@
+Variáveis globais:
+    OBS: como os tamanhos máximos das coisas nn foram dados, sera criado variáveis globais bem grandes
+    1 - INPUT_BUFFER: .skip 8192 (Amazena a entrada inteira)
+    2 - TAM_CAMADAS .skip 40 (primeira linha: suporta até 10 camadas)
+    3 - PESOS_MATRIZ: .skip 4096 (deve ser o suficiente)
+    4 - VETOR_ATIVACAO_0: .skip 400 (Vetor de ativacao atual)
+    5 - VETOR_ATIVACAO_1: .skip 400 (Prox vetor de ativacao)
+
+
+1 - Função ler_prox_int: 
+    - recebe um ponteiro para uma posição em uma string e lê o próx int, converte para inteiro e salva em um registrador
+    - ignora todos os caracteres aleatórios ("{", "}", "(", ")", ",", " ", etc...)
+    - facilita o processo de parsing
+    - avança o ponteiro de pos de string para dps do número
+    - funciona para valores negativos e valores com mais de 1 digito. (atoi)
+
+2 - Função parse_arquitetura
+    - ler o número de neurônios por camada e guarda em um array de inteiros (linha 1)
+
+3 - Função parse_pesos
+    - Cria a matriz de pesos
+    - total de linhas = TAM_CAMADAS[c]
+    - total de coluna = TAM_CAMADAS[c - 1]
+    - número de pesos por camada = TAM_CAMADAS[c - 1] * TAM_CAMADAS[c]
+
+4 - Função parse_vetor_inicial
+    - ler o valor inicial de cada neurônio na primeira camada e guarda em um array de inteiros (Linha 3)
+
+Lógica: 
+    - Camada c usa W[c] e a[c - 1] para gerar z[c].
+    - z[c] = W[c]*a[c - 1]
+    - a[c] = f(z[c])
+
+5 - Função mult_matriz_vetor
+    - multiplica a PESOS_MATRIZ[c] por VETOR_ATIVACAO_0.
+    - guarda o resultado em VETOR_ATIVACAO_1
+
+6 - Função ReLU 
+    - itera pelo VETOR_ATIVACAO_1
+    - todo valor negativo = 0
+
+7 - Função irisnet
+    - calcula o numero de camadas
+    loop:
+    - chama mult_matriz_vetor
+    - chama ReLU
+    - faz VETOR_ATIVACAO_0 = VETOR_ATIVACAO_1
+
+8 - Função max
+    - acha o index do valor max em VETOR_ATIVACAO_0
