@@ -114,5 +114,51 @@ parse_end:
     mul t0, t0, t1
     mv a1, t0               # Armazena o número lido em a1
     ret
-
+# ------------------------------------------------------------------------------
+# Função: parse_architecture
+# Descrição: Analisa a primeira linha da entrada para extrair os tamanhos das camadas.
+# Argumentos:
+#   a0: Ponteiro para a string de entrada.
+# Retorno/Efeitos:
+#   Atualiza o vetor TAM_CAMADAS com os tamanhos das camadas.
+#   Atualiza NUMERO_CAMADAS com o número de camadas.
+#   a0: Ponteiro para a próxima linha da entrada.
+# ------------------------------------------------------------------------------
 parse_arquitetura:
+    addi sp, sp, -16  # Aloca espaço na pilha
+    sw ra, 12(sp)     # Salva o endereço de retorno
+    sw s0, 8(sp)      # Salva o contador de camadas
+    sw s1, 4(sp)      # Salva o ponteiro para o Array de camadas
+
+    la s1, TAM_CAMADAS  # Ponteiro para o vetor de tamanhos das camadas
+    li s0, 0            # Inicializa o contador de camadas
+
+parse_arq_loop:
+    jal ler_prox_int  # Lê o próximo inteiro
+    sw a1, 0(s1)      # Armazena o tamanho da camada atual
+    addi s1, s1, 4    # Avança para o próximo espaço no vetor
+    addi s0, s0, 1    # Incrementa o contador de camadas
+
+    # Verifica se tem mais números na linha
+    lb t0, 0(a0)                # Lê o próximo caractere
+    li t1, 44                   # Código ASCII para ','
+    beq t0, t1, parse_arq_loop  # Se for vírgula, continua lendo
+
+prox_linha:
+    li t1, 10                   # Código ASCII para '\n'
+    lb t0, 0(a0)                # Lê o próximo caractere
+    beq t0, t1, fim_parse_arq   # Se for nova linha, termina o parsing
+    addi a0, a0, 1              # Avança o ponteiro
+    j prox_linha
+
+fim_parse_arq:
+    addi a0, a0, 1          # Avança o ponteiro para pular o '\n'
+    la t0, NUMERO_CAMADAS   # Ponteiro para o número de camadas
+    sw s0, 0(t0)            # Armazena o número de camadas
+
+    lw ra, 12(sp)       # Restaura o endereço de retorno
+    lw s0, 8(sp)        # Restaura o contador de camadas
+    lw s1, 4(sp)        # Restaura o ponteiro para o Array de camadas
+    addi sp, sp, 16     # Desaloca espaço na pilha
+    ret                 # Retorna para o chamador
+# ------------------------------------------------------------------------------
