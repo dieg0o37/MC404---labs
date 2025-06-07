@@ -13,18 +13,35 @@ Variáveis globais:
     - facilita o processo de parsing
     - avança o ponteiro de pos de string para dps do número
     - funciona para valores negativos e valores com mais de 1 digito. (atoi)
+    - Entrada:
+        - a0 = ponteiro para uma posicao de uma string
+    - Retorno:
+        - a0 = ponteiro para a posicao depois do prox int lido
+        - a1 = inteiro lido (com sinal)
 
 2 - Função parse_arquitetura
     - ler o número de neurônios por camada e guarda em um array de inteiros (linha 1)
+    - Entrada:
+        - a0 = ponteiro para o início da linha
+    - Retorno:
+        - a0 = ponteiro para o início da prox linha
+        - a1 = numero de camadas
 
 3 - Função parse_pesos
     - Cria a matriz de pesos
     - total de linhas = TAM_CAMADAS[c]
     - total de coluna = TAM_CAMADAS[c - 1]
     - número de pesos por camada = TAM_CAMADAS[c - 1] * TAM_CAMADAS[c]
+    - Entrada:
+        - a0 = ponteiro para o início da lista
+        - a1 = número de camadas
+    - Retorno:
+        - a0 = ponteiro para o início da prox linha
 
 4 - Função parse_vetor_inicial
     - ler o valor inicial de cada neurônio na primeira camada e guarda em um array de inteiros (Linha 3)
+    - Entrada
+        - a0 = ponteiro para o início da linha
 
 Lógica: 
     - Camada c usa W[c] e a[c - 1] para gerar z[c].
