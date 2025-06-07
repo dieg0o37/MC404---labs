@@ -1,7 +1,7 @@
 .data
-INPUT_BUFFER: .skip 8192        # Buffer para armazenar a string de entrada inteira
-TAM_CAMADAS: .skip 40           # Suporta até 10 camadas (10 * 4 bytes/int)
-PESOS_MATRIZ: .skip 4096        # Buffer para armazenar os pesos (td em int)
+INPUT_BUFFER: .skip 16384        # Buffer para armazenar a string de entrada inteira
+TAM_CAMADAS: .skip 20           # Suporta até 5 camadas (5 * 4 bytes/int)
+PESOS_MATRIZ: .skip 8192        # Buffer para armazenar os pesos (td em int)
 VETOR_ATIVACAO_0: .skip 400     # Buffer para armazenar o vetor de ativação c - 1
 VETOR_ATIVACAO_1: .skip 400     # Buffer para armazenar o vetor de ativação c
 NUMERO_CAMADAS: .skip 4
@@ -20,7 +20,7 @@ _start:
 
 # -- inicialização --
 ler_input:
-    la a0, 0
+    li a0, 0
     li a7, 63
     la a1, INPUT_BUFFER
     li a2, 8192
@@ -189,6 +189,7 @@ parse_pesos:
     addi s0, s0, -1         # Inicializa o contador de matrizes de pesos (de há N camadas ent há N-1 matrizes)
 
     la s3, TAM_CAMADAS      # Ponteiro para o vetor de tamanhos das camadas
+    addi a0, a0, 7          # Pula a parte inicial da linha de pesos "{"li":[[" 
 parse_pesos_camada_loop:
     lw t1, 0(s3)      # Carrega o tamanho da camada atual
     lw t2, 4(s3)      # Carrega o tamanho da próxima camada
@@ -206,8 +207,9 @@ parse_camada_loop:
 
 prox_camada:
     addi s0, s0, -1                 # decrementa o contador de matrizes
-    beqz s0, prox_linha_pesos       # Se já leu todas as matrizes, termina
+    beqz s0, fim_parse_pesos        # Se já leu todas as matrizes, termina
 
+    addi a0, a0, 9                  # Avança o ponteiro para pular a parte final da camada "]],"li":[["
     addi s3, s3, 4                  # Avança para o próximo par de tamanhos de camada
     j parse_pesos_camada_loop       # Continua lendo pesos para a próxima camada
 
