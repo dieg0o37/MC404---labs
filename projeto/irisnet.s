@@ -37,7 +37,7 @@ main:
     # ---------- Processamento da entrada -----------
 
     # Parsing da primeira linha
-    la a0, input_buffer
+    la a0, INPUT_BUFFER
     jal parse_arquitetura
     
     # Parsing da segunda linha
@@ -175,50 +175,40 @@ fim_parse_arq:
 #   - a0: Ponteiro para a próxima linha da entrada.
 # ------------------------------------------------------------------------------
 parse_pesos:
-    addi sp, sp, -16  # Aloca espaço na pilha
-    sw ra, 12(sp)     # Salva o endereço de retorno
-    sw s0, 8(sp)      # Salva o numero de camadas
-    sw s1, 4(sp)      # Salva o ponteiro para o Array de pesos
-    sw s2, 0(sp)      # Salva o contador de camadas
+    addi sp, sp, -32   # Aloca espaço na pilha
+    sw ra, 28(sp)      # Salva o endereço de retorno
+    sw s0, 24(sp)      # Salva o numero de camadas
+    sw s1, 20(sp)      # Salva o ponteiro para o Array de pesos
+    sw s3, 16(sp)      # Salva o ponteiro para o vetor de tamanhos das camadas
+    sw s5, 12(sp)      # Salva o número de pesos para cada camada
 
     la s0, NUMERO_CAMADAS   # Ponteiro para o número de camadas
     lw s0, 0(s0)            # Carrega o número de camadas
     la s1, PESOS_MATRIZ     # Ponteiro para o buffer de pesos
-    li s2, 0                # Inicializa o contador de camadas (0, N - 1)
+    addi s0, s0, -1         # Inicializa o contador de matrizes de pesos (de há N camadas ent há N-1 matrizes)
 
-    la t0, TAM_CAMADAS      # Ponteiro para o vetor de tamanhos das camadas
+    la s3, TAM_CAMADAS      # Ponteiro para o vetor de tamanhos das camadas
 
 parse_pesos_camada_loop:
-    lw t1, 0(t0)      # Carrega o tamanho da camada atual
-    lw t2, 4(t0)      # Carrega o tamanho da próxima camada
-    mul t3, t1, t2    # Calcula o número de pesos para esta camada
+    lw t1, 0(s3)      # Carrega o tamanho da camada atual
+    lw t2, 4(s3)      # Carrega o tamanho da próxima camada
+    mul s5, t1, t2    # Calcula o número de pesos para esta camada
 
-    li t1, 0          # Inicializa o contador de pesos para esta camada
 parse_camada_loop:
-    beq t1, t3, prox_camada   # Se já leu todos os pesos, pula para a próxima camada
-
-    addi sp, sp, -16
-    sw t0, 8(sp)              # Salva o ponteiro para o vetor de tamanhos das camadas
-    sw t1, 4(sp)              # Salva o contador de pesos
-    sw t3, 0(sp)              # Salva o número de pesos para esta camada
+    beqz s5, prox_camada      # Se não há mais pesos, vai para a próxima camada
 
     jal ler_prox_int          # Lê o próximo inteiro
 
-    lw t0, 8(sp)              # Restaura o ponteiro para o vetor de tamanhos das camadas
-    lw t1, 4(sp)              # Restaura o contador de pesos
-    lw t3, 0(sp)              # Restaura o número de pesos para esta camada
-
     sw a1, 0(s1)              # Armazena o peso lido
     addi s1, s1, 4            # Avança para o próximo espaço no buffer de pesos
-    addi t1, t1, 1            # Incrementa o contador de pesos
+    addi s5, s5, -1           # Decrementa o contador de pesos restantes
     j parse_camada_loop       # Continua lendo pesos para a camada atual
 
 prox_camada:
-    addi s2, s2, 1                  # Incrementa o contador de camadas
-    beq s2, s0, prox_linha_pesos     # Se já leu todas as camadas, termina
+    addi s0, s0, -1                 # decrementa o contador de matrizes
+    beqz s0, prox_linha_pesos       # Se já leu todas as matrizes, termina
 
-    addi t0, t0, 4                  # Avança para o próximo par de tamanhos de camada
-    addi s1, s1, 4                  # Avança para o próximo espaço no buffer de pesos
+    addi s3, s3, 4                  # Avança para o próximo par de tamanhos de camada
     j parse_pesos_camada_loop       # Continua lendo pesos para a próxima camada
 
 prox_linha_pesos:
@@ -231,11 +221,12 @@ prox_linha_pesos:
 fim_parse_pesos:
     addi a0, a0, 1              # Avança o ponteiro para pular o '\n'
 
-    lw ra, 12(sp)       # Restaura o endereço de retorno
-    lw s0, 8(sp)        # Restaura o número de camadas
-    lw s1, 4(sp)        # Restaura o ponteiro para o Array de pesos
-    lw s2, 0(sp)        # Restaura o contador de camadas
-    addi sp, sp, 16     # Desaloca espaço na pilha
+    lw ra, 28(sp)       # Restaura o endereço de retorno
+    lw s0, 24(sp)       # Restaura o número de camadas
+    lw s1, 20(sp)       # Restaura o ponteiro para o buffer de pesos
+    lw s3, 16(sp)       # Restaura o ponteiro para o vetor de tamanhos das camadas
+    lw s5, 12(sp)       # Restaura o número de pesos para cada camada   
+    addi sp, sp, 32     # Desaloca espaço na pilha
     ret                 # Retorna para o chamador
 # ------------------------------------------------------------------------------
 # Função: parse_vetor_inicial
@@ -257,6 +248,7 @@ parse_vetor_inicial:
     la s1, VETOR_ATIVACAO_0 # Ponteiro para o buffer de ativação
 
     li s2, 0                # Inicializa o contador de entradas
+    
 parse_vetor_loop:
     beq s2, s0, fim_parse_vetor  # Se já leu todos os valores, termina
     jal ler_prox_int          # Lê o próximo inteiro
@@ -264,6 +256,7 @@ parse_vetor_loop:
     addi s1, s1, 4            # Avança para o próximo espaço no vetor de ativação
     addi s2, s2, 1            # Incrementa o contador de entradas
     j parse_vetor_loop        # Continua lendo valores
+
 fim_parse_vetor:
     lw ra, 12(sp)       # Restaura o endereço de retorno
     lw s0, 8(sp)        # Restaura o número de valores na camada de entrada
