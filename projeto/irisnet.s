@@ -79,6 +79,7 @@ ler_prox_int:
     li t0, 0          # Inicializa o número lido como 0
     li t1, 1          # Inicializa o sinal como positivo (-1 = negativo)
     li t2, 10         # Inicializa a base decimal
+
 pular_caracteres:
     lb t3, 0(a0)
     li t4, 45                       # Código ASCII para '-'
@@ -88,12 +89,15 @@ pular_caracteres:
     li t4, 57                       # Código ASCII para '9'
     bgt t3, t4, prox_char           # Se não for entre '0' e '9', pula
     j parse_loop
+
 prox_char:
     addi a0, a0, 1          # Avança o ponteiro
     j pular_caracteres
+
 sinal_negativo:
     li t1, -1               # Define o sinal como negativo
     addi a0, a0, 1          # Avança o ponteiro
+
 parse_loop:
     lb t3, 0(a0)            # Lê o byte atual da string
 
@@ -144,12 +148,12 @@ parse_arq_loop:
     li t1, 44                   # Código ASCII para ','
     beq t0, t1, parse_arq_loop  # Se for vírgula, continua lendo
 
-prox_linha:
+prox_linha_arq:
     li t1, 10                   # Código ASCII para '\n'
     lb t0, 0(a0)                # Lê o próximo caractere
     beq t0, t1, fim_parse_arq   # Se for nova linha, termina o parsing
     addi a0, a0, 1              # Avança o ponteiro
-    j prox_linha
+    j prox_linha_arq
 
 fim_parse_arq:
     addi a0, a0, 1          # Avança o ponteiro para pular o '\n'
@@ -162,3 +166,74 @@ fim_parse_arq:
     addi sp, sp, 16     # Desaloca espaço na pilha
     ret                 # Retorna para o chamador
 # ------------------------------------------------------------------------------
+# Função: parse_pesos
+# Descrição: Analisa a segunda linha e extrai todos os pesos.
+# Argumentos:
+#   - a0: Ponteiro para o início da linha de pesos.  
+# Retorno/Efeitos:
+#   - Atualiza o buffer PESOS_MATRIZ com os pesos lidos.
+#   - a0: Ponteiro para a próxima linha da entrada.
+# ------------------------------------------------------------------------------
+parse_pesos:
+    addi sp, sp, -16  # Aloca espaço na pilha
+    sw ra, 12(sp)     # Salva o endereço de retorno
+    sw s0, 8(sp)      # Salva o numero de camadas
+    sw s1, 4(sp)      # Salva o ponteiro para o Array de pesos
+    sw s2, 0(sp)      # Salva o contador de camadas
+
+    la s0, NUMERO_CAMADAS   # Ponteiro para o número de camadas
+    lw s0, 0(s0)            # Carrega o número de camadas
+    la s1, PESOS_MATRIZ     # Ponteiro para o buffer de pesos
+    li s2, 0                # Inicializa o contador de camadas (0, N - 1)
+
+    la t0, TAM_CAMADAS      # Ponteiro para o vetor de tamanhos das camadas
+    
+parse_pesos_camada_loop:
+    lw t1, 0(t0)      # Carrega o tamanho da camada atual
+    lw t2, 4(t0)      # Carrega o tamanho da próxima camada
+    mul t3, t1, t2    # Calcula o número de pesos para esta camada
+
+    li t1, 0          # Inicializa o contador de pesos para esta camada
+parse_camada_loop:
+    beq t1, t3, prox_camada   # Se já leu todos os pesos, pula para a próxima camada
+
+    addi sp, sp, -16
+    sw t0, 8(sp)              # Salva o ponteiro para o vetor de tamanhos das camadas
+    sw t1, 4(sp)              # Salva o contador de pesos
+    sw t3, 0(sp)              # Salva o número de pesos para esta camada
+
+    jal ler_prox_int          # Lê o próximo inteiro
+
+    lw t0, 8(sp)              # Restaura o ponteiro para o vetor de tamanhos das camadas
+    lw t1, 4(sp)              # Restaura o contador de pesos
+    lw t3, 0(sp)              # Restaura o número de pesos para esta camada
+
+    sw a1, 0(s1)              # Armazena o peso lido
+    addi s1, s1, 4            # Avança para o próximo espaço no buffer de pesos
+    addi t1, t1, 1            # Incrementa o contador de pesos
+    j parse_camada_loop       # Continua lendo pesos para a camada atual
+
+prox_camada:
+    addi s2, s2, 1                  # Incrementa o contador de camadas
+    beq s2, s0, prox_linha_pesos     # Se já leu todas as camadas, termina
+
+    addi t0, t0, 4                  # Avança para o próximo par de tamanhos de camada
+    addi s1, s1, 4                  # Avança para o próximo espaço no buffer de pesos
+    j parse_pesos_camada_loop       # Continua lendo pesos para a próxima camada
+
+prox_linha_pesos:
+    li t1, 10                     # Código ASCII para '\n'
+    lb t0, 0(a0)                  # Lê o próximo caractere
+    beq t0, t1, fim_parse_pesos   # Se for nova linha, termina o parsing
+    addi a0, a0, 1                # Avança o ponteiro
+    j prox_linha_pesos            # Continua lendo até encontrar nova linha
+
+fim_parse_pesos:
+    addi a0, a0, 1              # Avança o ponteiro para pular o '\n'
+
+    lw ra, 12(sp)       # Restaura o endereço de retorno
+    lw s0, 8(sp)        # Restaura o número de camadas
+    lw s1, 4(sp)        # Restaura o ponteiro para o Array de pesos
+    lw s2, 0(sp)        # Restaura o contador de camadas
+    addi sp, sp, 16     # Desaloca espaço na pilha
+    ret                 # Retorna para o chamador
