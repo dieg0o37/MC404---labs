@@ -60,8 +60,59 @@ main:
     jal escrever_resultado
 
     # -------------- Finalização -----------------
-    
+
     lw ra, 12(sp)   # Restaura o endereço de retorno
     addi sp, sp, 16 # Desaloca espaço na pilha
     li a0, 0        # retorna 0
     ret
+
+# ------------------------------------------------------------------------------
+# Função: ler_prox_int
+# Descrição: Lê um número inteiro (positivo ou negativo) de uma string.
+# Argumentos:
+#   a0: Ponteiro para a string (será atualizado).
+# Retorno:
+#   a0: Ponteiro para depois do número lido.
+#   a1: O número inteiro lido.
+# ------------------------------------------------------------------------------
+ler_prox_int:
+    li t0, 0          # Inicializa o número lido como 0
+    li t1, 1          # Inicializa o sinal como positivo (-1 = negativo)
+    li t2, 10         # Inicializa a base decimal
+pular_caracteres:
+    lb t3, 0(a0)
+    li t4, 45                       # Código ASCII para '-'
+    beq t3, t4, sinal_negativo      # Se for '-', trata como negativo
+    li t4, 48                       # Código ASCII para '0'
+    blt t3, t4, prox_char   
+    li t4, 57                       # Código ASCII para '9'
+    bgt t3, t4, prox_char           # Se não for entre '0' e '9', pula
+    j parse_loop
+prox_char:
+    addi a0, a0, 1          # Avança o ponteiro
+    j pular_caracteres
+sinal_negativo:
+    li t1, -1               # Define o sinal como negativo
+    addi a0, a0, 1          # Avança o ponteiro
+parse_loop:
+    lb t3, 0(a0)            # Lê o byte atual da string
+
+    li t4, 48               # Código ASCII para '0'
+    blt t3, t4, parse_end   # Se for menor que '0', termina o parsing
+    li t4, 57               # Código ASCII para '9'
+    bgt t3, t4, parse_end   # Se for maior que '9', termina o parsing
+
+    addi t3, t3, -48        # Converte de ASCII para inteiro
+
+    mul t0, t0, t2          # Multiplica o número atual por 10
+    add t0, t0, t3          # Adiciona o dígito lido
+
+    addi a0, a0, 1          # Avança o ponteiro
+    j parse_loop            # Continua lendo o próximo dígito
+
+parse_end:
+    mul t0, t0, t1
+    mv a1, t0               # Armazena o número lido em a1
+    ret
+
+parse_arquitetura:
