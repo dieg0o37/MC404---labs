@@ -378,7 +378,7 @@ inner_loop:
     j inner_loop
 inner_loop_end:
     # --- Aplica ReLU ---
-    bgez s6, relu_end # se acumulador >= 0, pula
+    bge s6, zero, relu_end # se acumulador >= 0, pula
     li s6, 0          # se for negativo, zera
 relu_end:
     sw s6, 0(a4)      # Salva o resultado final em z[i]
