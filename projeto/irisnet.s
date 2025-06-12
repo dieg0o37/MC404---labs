@@ -1,4 +1,4 @@
-.data
+.bss
 INPUT_BUFFER: .skip 16384        # Buffer para armazenar a string de entrada inteira
 TAM_CAMADAS: .skip 20           # Suporta até 5 camadas (5 * 4 bytes/int)
 PESOS_MATRIZ: .skip 8192        # Buffer para armazenar os pesos (td em int)
@@ -207,7 +207,7 @@ parse_camada_loop:
 
 prox_camada:
     addi s0, s0, -1                 # decrementa o contador de matrizes
-    beqz s0, fim_parse_pesos        # Se já leu todas as matrizes, termina
+    beqz s0, prox_linha_pesos       # Se já leu todas as matrizes, termina
 
     addi a0, a0, 9                  # Avança o ponteiro para pular a parte final da camada "]],"li":[["
     addi s3, s3, 4                  # Avança para o próximo par de tamanhos de camada
@@ -254,6 +254,7 @@ parse_vetor_inicial:
 parse_vetor_loop:
     beq s2, s0, fim_parse_vetor  # Se já leu todos os valores, termina
     jal ler_prox_int          # Lê o próximo inteiro
+    slli a1, a1, 24
     sw a1, 0(s1)              # Armazena o valor lido no vetor de ativação
     addi s1, s1, 4            # Avança para o próximo espaço no vetor de ativação
     addi s2, s2, 1            # Incrementa o contador de entradas
