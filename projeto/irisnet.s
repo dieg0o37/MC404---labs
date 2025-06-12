@@ -254,7 +254,6 @@ parse_vetor_inicial:
 parse_vetor_loop:
     beq s2, s0, fim_parse_vetor  # Se já leu todos os valores, termina
     jal ler_prox_int          # Lê o próximo inteiro
-    slli a1, a1, 24
     sw a1, 0(s1)              # Armazena o valor lido no vetor de ativação
     addi s1, s1, 4            # Avança para o próximo espaço no vetor de ativação
     addi s2, s2, 1            # Incrementa o contador de entradas
