@@ -381,6 +381,10 @@ inner_loop_end:
     bge s6, zero, relu_end # se acumulador >= 0, pula
     li s6, 0          # se for negativo, zera
 relu_end:
+    li t5, 128
+    blt s6, t5, less_than_1_byte
+    srli s6, s6, 7
+less_than_1_byte:
     sw s6, 0(a4)      # Salva o resultado final em z[i]
 
     addi a4, a4, 4    # avança ponteiro z
