@@ -1,0 +1,32 @@
+leitura:
+setar 0xFFFF0100+0x00 = 1 para começar a leitura do GPS
+
+Movimento:
+setar 0xFFFF0100+0x20 = direção do volante (-127, 127)
+
+setar 0xFFFF0100+0x21 = direção do motor (1 = pra frente, -1 = pra trás, 0 = desligado)
+
+setar 0xFFFF0100+0x21 = freio de mão (1 = ligado)
+
+ângulos de Euler:
+base+0x04 ângulo x
+
+base+0x08 ângulo y
+
+base+0x0c ângulo z (esse é o importante acho)
+
+Posição do Carro:
+base+0x10 Pos X
+
+base+0x14 Pos Y
+
+base+0x18 Pos Z
+
+Guarda a distância em centímetros do obstáculo mais próximo. 
+base+0x1C = d
+
+vira o volante +x (a determinar)
+liga o motor
+enquanto d == -1 || d > 50
+wait
+freio de mão = 1
