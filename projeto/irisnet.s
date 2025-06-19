@@ -5,7 +5,6 @@ PESOS_MATRIZ: .skip 8192        # Buffer para armazenar os pesos (td em int)
 VETOR_ATIVACAO_0: .skip 400     # Buffer para armazenar o vetor de ativação c - 1
 VETOR_ATIVACAO_1: .skip 400     # Buffer para armazenar o vetor de ativação c
 NUMERO_CAMADAS: .skip 4
-VETOR_FINAL: .skip 12           # Buffer para armazenar o vetor final (3 tipos de plantas)
 OUTPUT: .skip 4                 # Buffer para armazenar o index da planta escolhida (0, 1 ou 2)
 OUTPUT_BUFFER: .skip 2          # Buffer para armazenar o resultado final (0, 1 ou 2) + '\n'
 
@@ -254,6 +253,7 @@ parse_vetor_inicial:
 parse_vetor_loop:
     beq s2, s0, fim_parse_vetor  # Se já leu todos os valores, termina
     jal ler_prox_int          # Lê o próximo inteiro
+    slli a1, a1, 24
     sw a1, 0(s1)              # Armazena o valor lido no vetor de ativação
     addi s1, s1, 4            # Avança para o próximo espaço no vetor de ativação
     addi s2, s2, 1            # Incrementa o contador de entradas
@@ -282,6 +282,9 @@ irisnet:
     sw s3, 12(sp)     # s3: ponteiro para o vetor de ativação de ENTRADA da camada
     sw s4, 8(sp)      # s4: ponteiro para o vetor de ativação de SAÍDA da camada
     sw s5, 4(sp)      # s5: salva temporariamente s3 ou s4 para a troca
+    sw s6, 0(sp)      # s6: igual a 1 para aplicar ReLU, 0 para não aplicar (última multiplicação não aplica ReLU)
+
+    li s6, 1          # Inicializa s6 para aplicar ReLU nas camadas intermediárias
 
     # --- Inicialização ---
     la t0, NUMERO_CAMADAS
@@ -302,6 +305,7 @@ irisnet_loop:
     mv a2, s2             # a2 = ponteiro para a matriz de pesos atual
     mv a3, s3             # a3 = ponteiro para o vetor de ativação de entrada
     mv a4, s4             # a4 = ponteiro para o vetor de ativação de saída
+    mv a5, s6             # a5 = 1 para aplicar ReLU (exceto na última camada)
 
     jal mult_matriz_vetor_relu # Executa a multiplicação e ReLU para a camada
 
@@ -323,6 +327,11 @@ irisnet_loop:
     mv s5, s3
     mv s3, s4
     mv s4, s5
+
+    li s5, 2
+    bne s0, s5, nn_eh_ultima_camada
+    li s6, 0          # Reseta s6 para a próxima iteração (não aplica ReLU na última camada)
+    nn_eh_ultima_camada:
 
     addi s0, s0, -1       # Decrementa o contador de matrizes
     j irisnet_loop
@@ -348,6 +357,7 @@ irisnet_end:
 #   a2: Ponteiro para o início da matriz de pesos W[c] (N_out x N_in)
 #   a3: Ponteiro para o vetor de ativação de entrada 'a'
 #   a4: Ponteiro para o vetor de ativação de saída 'z'
+#   a5: Se for 1, aplica ReLU(z) (se for 0, não aplica)
 # ------------------------------------------------------------------------------
 mult_matriz_vetor_relu:
     addi sp, sp, -16
@@ -368,7 +378,7 @@ inner_loop:
 
     lw t3, 0(a2)  # t3 = W[i][j]
     lw t4, 0(t2)  # t4 = a[j]
-    
+
     mul t5, t3, t4
     add s6, s6, t5 # acumulador += W[i][j] * a[j]
 
@@ -378,15 +388,11 @@ inner_loop:
     j inner_loop
 inner_loop_end:
     # --- Aplica ReLU ---
+    beq a5, zero, relu_end # Se a5 == 0, não aplica ReLU
     bge s6, zero, relu_end # se acumulador >= 0, pula
     li s6, 0          # se for negativo, zera
 relu_end:
-    li t5, 128
-    blt s6, t5, less_than_1_byte
-    srli s6, s6, 7
-less_than_1_byte:
     sw s6, 0(a4)      # Salva o resultado final em z[i]
-
     addi a4, a4, 4    # avança ponteiro z
     addi t0, t0, 1    # i++
     j outer_loop
