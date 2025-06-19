@@ -1,5 +1,5 @@
 .bss
-INPUT_BUFFER: .skip 16384        # Buffer para armazenar a string de entrada inteira
+INPUT_BUFFER: .skip 8192        # Buffer para armazenar a string de entrada inteira
 TAM_CAMADAS: .skip 20           # Suporta até 5 camadas (5 * 4 bytes/int)
 PESOS_MATRIZ: .skip 8192        # Buffer para armazenar os pesos (td em int)
 VETOR_ATIVACAO_0: .skip 400     # Buffer para armazenar o vetor de ativação c - 1
