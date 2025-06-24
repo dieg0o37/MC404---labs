@@ -254,6 +254,7 @@ parse_vetor_loop:
     beq s2, s0, fim_parse_vetor  # Se já leu todos os valores, termina
     jal ler_prox_int          # Lê o próximo inteiro
     slli a1, a1, 24
+    srai a1, a1, 24
     sw a1, 0(s1)              # Armazena o valor lido no vetor de ativação
     addi s1, s1, 4            # Avança para o próximo espaço no vetor de ativação
     addi s2, s2, 1            # Incrementa o contador de entradas
@@ -381,6 +382,8 @@ inner_loop:
 
     mul t5, t3, t4
     add s6, s6, t5 # acumulador += W[i][j] * a[j]
+    slli s6, s6, 24
+    srai s6, s6, 24
 
     addi a2, a2, 4 # avança ponteiro W
     addi t2, t2, 4 # avança ponteiro 'a' temporário
